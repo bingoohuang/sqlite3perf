@@ -2,6 +2,60 @@
 
 This repository is cloned from [mwmahlberg/sqlite3perf](https://github.com/mwmahlberg/sqlite3perf).
 
+## Inserts performance among different batch size
+
+batchSize | cost time for 10000 rows inserts | records/s
+---|---|---
+10|465ms|21476.82 records/s
+100|116ms|86119.24 records/s
+500|65ms|152534.94 records/s
+1000|59ms|168162.75 records/s
+
+```bash
+$ sqlite3perf generate -r 10000 -b 10
+2020/07/09 23:08:39 Generating 10000 records
+2020/07/09 23:08:39 Opening database
+2020/07/09 23:08:39 Dropping table 'bench' if already present
+2020/07/09 23:08:39 (Re-)creating table 'bench'
+2020/07/09 23:08:39 Setting up the environment
+2020/07/09 23:08:39 Starting progress logging
+2020/07/09 23:08:39 Starting inserts
+2020/07/09 23:08:40 10000/10000 (100.00%) written in 465.618282ms, avg: 46.561µs/record, 21476.82 records/s
+
+# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [23:08:40] 
+$ sqlite3perf generate -r 10000 -b 100
+2020/07/09 23:08:43 Generating 10000 records
+2020/07/09 23:08:43 Opening database
+2020/07/09 23:08:43 Dropping table 'bench' if already present
+2020/07/09 23:08:43 (Re-)creating table 'bench'
+2020/07/09 23:08:43 Setting up the environment
+2020/07/09 23:08:43 Starting progress logging
+2020/07/09 23:08:43 Starting inserts
+2020/07/09 23:08:43 10000/10000 (100.00%) written in 116.118071ms, avg: 11.611µs/record, 86119.24 records/s
+
+# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [23:08:43] 
+$ sqlite3perf generate -r 10000 -b 500
+2020/07/09 23:08:48 Generating 10000 records
+2020/07/09 23:08:48 Opening database
+2020/07/09 23:08:48 Dropping table 'bench' if already present
+2020/07/09 23:08:48 (Re-)creating table 'bench'
+2020/07/09 23:08:48 Setting up the environment
+2020/07/09 23:08:48 Starting progress logging
+2020/07/09 23:08:48 Starting inserts
+2020/07/09 23:08:48 10000/10000 (100.00%) written in 65.55875ms, avg: 6.555µs/record, 152534.94 records/s
+
+# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [23:08:48] 
+$ sqlite3perf generate -r 10000 -b 1000
+2020/07/09 23:08:55 Generating 10000 records
+2020/07/09 23:08:55 Opening database
+2020/07/09 23:08:55 Dropping table 'bench' if already present
+2020/07/09 23:08:55 (Re-)creating table 'bench'
+2020/07/09 23:08:55 Setting up the environment
+2020/07/09 23:08:55 Starting progress logging
+2020/07/09 23:08:55 Starting inserts
+2020/07/09 23:08:55 10000/10000 (100.00%) written in 59.466201ms, avg: 5.946µs/record, 168162.75 records/s
+```
+
 This repository contains a small application which was created while researching a proper 
 answer to the question [Faster sqlite 3 query in go? I need to process 1million+ rows as fast as possible][so:oq].
 
