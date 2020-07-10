@@ -4,7 +4,7 @@ This repository is cloned from [mwmahlberg/sqlite3perf](https://github.com/mwmah
 
 ## Inserts performance among different batch size
 
-batchSize | cost time for 10000 rows inserts | records/s
+batchSize | cost of 10000 rows inserts | records/s
 ---|---|---
 10|465ms|21476.82 records/s
 100|116ms|86119.24 records/s
