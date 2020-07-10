@@ -22,6 +22,7 @@ type GenerateCmd struct {
 	// Prepared use sql.DB Prepared statement for later queries or executions.
 	Prepared   bool
 	LogSeconds int
+	Options    string
 
 	// cmd represents the generate command
 	cmd *cobra.Command
@@ -63,6 +64,8 @@ func (g *GenerateCmd) initFlags() {
 		"VACUUM database file after the records generated.")
 	f.BoolVarP(&g.Prepared, "prepared", "p", false,
 		"use sql.DB Prepared statement for later queries or executions.")
+	f.StringVarP(&g.Options, "options", "o", "",
+		"additional options for sqlite3 connection string, refer to https://github.com/mattn/go-sqlite3")
 }
 
 func (g *GenerateCmd) generateRun(cmd *cobra.Command, args []string) {
@@ -70,7 +73,7 @@ func (g *GenerateCmd) generateRun(cmd *cobra.Command, args []string) {
 
 	log.Println("Opening database")
 	// Database Setup
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite3", dbPath+g.Options)
 	if err != nil {
 		log.Fatalf("Error while opening database '%s': %s", dbPath, err.Error())
 	}

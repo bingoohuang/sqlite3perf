@@ -56,7 +56,6 @@ $ sqlite3perf generate -r 10000 -b 1000
 2020/07/09 23:08:55 10000/10000 (100.00%) written in 59.466201ms, avg: 5.946µs/record, 168162.75 records/s
 ```
 
-
 ## Compare between prepared and non-prepared
 
 mode | cost
@@ -87,6 +86,92 @@ $ sqlite3perf generate -r 30000                                                 
 2020/07/10 09:57:30 30000/30000 (100.00%) written in 286.420228ms, avg: 9.547µs/record, 104741.21 records/s
 
 sqlite3perf on  master [!] via 🐹 v1.14.4 via 🐍 v2.7.16
+```
+
+## different connect options.
+
+Options | speed 
+---|---
+_sync=0&mode=memory&cache=shared|143139.94 records/s
+_sync=0&mode=memory             |136484.47 records/s
+_sync=0                         |132866.74 records/s
+(none)                          |111611.73 records/s
+
+
+```bash
+$ sqlite3perf generate -r 50000 -b 100 -o "?_sync=0&mode=memory&cache=shared"
+2020/07/11 00:20:14 Generating records by config &{NumRecs:50000 BatchSize:100 Vacuum:false Prepared:false LogSeconds:2 Options:?_sync=0&mode=memory&cache=shared cmd:0x4ae0680}
+2020/07/11 00:20:14 Opening database
+2020/07/11 00:20:14 Dropping table 'bench' if already present
+2020/07/11 00:20:14 (Re-)creating table 'bench'
+2020/07/11 00:20:14 Setting up the environment
+2020/07/11 00:20:14 Starting progress logging
+2020/07/11 00:20:14 Starting inserts
+2020/07/11 00:20:15 50000/50000 (100.00%) written in 349.308517ms, avg: 6.986µs/record, 143139.94 records/s
+
+# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [0:20:15] 
+$ sqlite3perf generate -r 50000 -b 100 -o "?_sync=0&mode=memory"
+2020/07/11 00:20:21 Generating records by config &{NumRecs:50000 BatchSize:100 Vacuum:false Prepared:false LogSeconds:2 Options:?_sync=0&mode=memory cmd:0x4ae0680}
+2020/07/11 00:20:21 Opening database
+2020/07/11 00:20:21 Dropping table 'bench' if already present
+2020/07/11 00:20:21 (Re-)creating table 'bench'
+2020/07/11 00:20:21 Setting up the environment
+2020/07/11 00:20:21 Starting progress logging
+2020/07/11 00:20:21 Starting inserts
+2020/07/11 00:20:21 50000/50000 (100.00%) written in 366.342047ms, avg: 7.326µs/record, 136484.47 records/s
+
+# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [0:20:22] 
+$ sqlite3perf generate -r 50000 -b 100 -o "?_sync=0"
+2020/07/11 00:20:29 Generating records by config &{NumRecs:50000 BatchSize:100 Vacuum:false Prepared:false LogSeconds:2 Options:?_sync=0 cmd:0x4ae0680}
+2020/07/11 00:20:29 Opening database
+2020/07/11 00:20:29 Dropping table 'bench' if already present
+2020/07/11 00:20:29 (Re-)creating table 'bench'
+2020/07/11 00:20:29 Setting up the environment
+2020/07/11 00:20:29 Starting progress logging
+2020/07/11 00:20:29 Starting inserts
+2020/07/11 00:20:30 50000/50000 (100.00%) written in 376.316893ms, avg: 7.526µs/record, 132866.74 records/s
+
+# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [0:20:30] 
+$ sqlite3perf generate -r 50000 -b 100              
+2020/07/11 00:20:41 Generating records by config &{NumRecs:50000 BatchSize:100 Vacuum:false Prepared:false LogSeconds:2 Options: cmd:0x4ae0680}
+2020/07/11 00:20:41 Opening database
+2020/07/11 00:20:41 Dropping table 'bench' if already present
+2020/07/11 00:20:41 (Re-)creating table 'bench'
+2020/07/11 00:20:41 Setting up the environment
+2020/07/11 00:20:41 Starting progress logging
+2020/07/11 00:20:41 Starting inserts
+2020/07/11 00:20:41 50000/50000 (100.00%) written in 447.981594ms, avg: 8.959µs/record, 111611.73 records/s
+```
+
+## [Command Line Shell For SQLite](https://www.sqlite.org/cli.html)
+
+```bash
+$ sqlite3 sqlite3perf.db 
+SQLite version 3.28.0 2019-04-15 14:49:49
+Enter ".help" for usage hints.
+sqlite> .tables
+bench
+sqlite> .schema bench
+CREATE TABLE bench(ID int PRIMARY KEY ASC, rand TEXT, hash TEXT);
+sqlite> select * from bench limit 3;
+0|70d2e0802359c436|b3085192086ceeeeaa2ec20f3ccc9047f3148cd3154ae734ec93adc4ab5661f2
+1|4125c6f752726494|7003a29fa88c302e35b04b9a3011e8b67bcf970f3b9c18bdd26227eff0ea6268
+2|85be8e175929949f|f9c2fda0688eb6fda643178f80e4500faddf39ff9f6e7c209319106b16057f68
+sqlite> select count(*) from bench;
+50000
+sqlite> .header on
+sqlite> .mode column
+sqlite> select count(*) from bench;
+count(*)  
+----------
+50000     
+sqlite> select * from bench limit 3;
+ID          rand              hash                                                            
+----------  ----------------  ----------------------------------------------------------------
+0           70d2e0802359c436  b3085192086ceeeeaa2ec20f3ccc9047f3148cd3154ae734ec93adc4ab5661f2
+1           4125c6f752726494  7003a29fa88c302e35b04b9a3011e8b67bcf970f3b9c18bdd26227eff0ea6268
+2           85be8e175929949f  f9c2fda0688eb6fda643178f80e4500faddf39ff9f6e7c209319106b16057f68
+sqlite> .quit
 ```
 
 This repository contains a small application which was created while researching a proper 
