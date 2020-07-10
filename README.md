@@ -2,7 +2,7 @@
 
 This repository is cloned from [mwmahlberg/sqlite3perf](https://github.com/mwmahlberg/sqlite3perf).
 
-## Inserts performance among different batch size
+## Inserts performance among different batch size(prepared mode)
 
 batchSize | cost of 10000 rows inserts | records/s
 ---|---|---
@@ -54,6 +54,39 @@ $ sqlite3perf generate -r 10000 -b 1000
 2020/07/09 23:08:55 Starting progress logging
 2020/07/09 23:08:55 Starting inserts
 2020/07/09 23:08:55 10000/10000 (100.00%) written in 59.466201ms, avg: 5.946µs/record, 168162.75 records/s
+```
+
+
+## Compare between prepared and non-prepared
+
+mode | cost
+---|---
+prepared|128387.08 records/s
+non|104741.21 records/s
+
+```bash
+$ sqlite3perf generate -r 30000 -p                                                                                                                                                                    [五  7/10 09:57:17 2020]
+2020/07/10 09:57:27 Generating records by config &{NumRecs:30000 BatchSize:100 Vacuum:false Prepared:true LogSeconds:2 cmd:0x4ae0680}
+2020/07/10 09:57:27 Opening database
+2020/07/10 09:57:27 Dropping table 'bench' if already present
+2020/07/10 09:57:27 (Re-)creating table 'bench'
+2020/07/10 09:57:27 Setting up the environment
+2020/07/10 09:57:27 Starting progress logging
+2020/07/10 09:57:27 Starting inserts
+2020/07/10 09:57:27 30000/30000 (100.00%) written in 233.668369ms, avg: 7.788µs/record, 128387.08 records/s
+
+sqlite3perf on  master [!] via 🐹 v1.14.4 via 🐍 v2.7.16
+$ sqlite3perf generate -r 30000                                                                                                                                                                       [五  7/10 09:57:27 2020]
+2020/07/10 09:57:30 Generating records by config &{NumRecs:30000 BatchSize:100 Vacuum:false Prepared:false LogSeconds:2 cmd:0x4ae0680}
+2020/07/10 09:57:30 Opening database
+2020/07/10 09:57:30 Dropping table 'bench' if already present
+2020/07/10 09:57:30 (Re-)creating table 'bench'
+2020/07/10 09:57:30 Setting up the environment
+2020/07/10 09:57:30 Starting progress logging
+2020/07/10 09:57:30 Starting inserts
+2020/07/10 09:57:30 30000/30000 (100.00%) written in 286.420228ms, avg: 9.547µs/record, 104741.21 records/s
+
+sqlite3perf on  master [!] via 🐹 v1.14.4 via 🐍 v2.7.16
 ```
 
 This repository contains a small application which was created while researching a proper 
