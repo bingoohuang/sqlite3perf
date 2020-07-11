@@ -90,13 +90,18 @@ sqlite3perf on  master [!] via 🐹 v1.14.4 via 🐍 v2.7.16
 
 ## different connect options.
 
-Options | speed 
----|---
-_sync=0&mode=memory&cache=shared|143139.94 records/s
-_sync=0&mode=memory             |136484.47 records/s
-_sync=0                         |132866.74 records/s
-(none)                          |111611.73 records/s
+Options |Prepared| speed(records/s)
+---     |---     |---
+`_sync=0&mode=memory&cache=shared`|yes |176285.79 
+`_sync=0&mode=memory&cache=shared`|no  |134848.84
+`_sync=0&mode=memory`             |yes |173415.60
+`_sync=0&mode=memory`             |no  |137106.92
+`_sync=0`                         |yes |176476.27
+`_sync=0`                         |no  |138742.34
+(none)                          |yes |135183.90
+(none)                          |no  |107080.79
 
+> As the data showed, the `_sync=0` with `Prepared` reached the max speed.
 
 ```bash
 $ sqlite3perf generate -r 50000 -b 100 -o "?_sync=0&mode=memory&cache=shared"
