@@ -146,10 +146,7 @@ func (g GenerateCmd) inserts(i *int, db *sql.DB, done chan bool) {
 		h.Reset()         // Reset the hasher so we can reuse it
 		_, _ = h.Write(b) // Fill the hasher
 
-		hexB := hex.EncodeToString(b)
-		hashB := hex.EncodeToString(h.Sum(nil))
-
-		args = append(args, *i, hexB, hashB)
+		args = append(args, *i, hex.EncodeToString(b), hex.EncodeToString(h.Sum(nil)))
 
 		if len(args) == g.BatchSize*3 {
 			if _, err := execFn(args...); err != nil {
