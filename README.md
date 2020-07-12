@@ -1,6 +1,6 @@
 # sqlite3perf
 
-This repository is cloned from [mwmahlberg/sqlite3perf](https://github.com/mwmahlberg/sqlite3perf).
+This repository is originally forked from [mwmahlberg/sqlite3perf](https://github.com/mwmahlberg/sqlite3perf).
 
 ## Inserts performance among different batch size(prepared mode)
 
@@ -178,6 +178,61 @@ ID          rand              hash
 2           85be8e175929949f  f9c2fda0688eb6fda643178f80e4500faddf39ff9f6e7c209319106b16057f68
 sqlite> .quit
 ```
+
+## [How to Create an Efficient Pagination in SQL (PoC)](https://github.com/IvoPereira/Efficient-Pagination-SQL-PoC)
+
+- [Why You Shouldn't Use OFFSET and LIMIT For Your Pagination](https://ivopereira.net/content/efficient-pagination-dont-use-offset-limit)
+- [db fiddle](https://www.db-fiddle.com/f/3JSpBxVgcqL3W2AzfRNCyq/1)
+
+![image](https://user-images.githubusercontent.com/1940588/87237941-eeabd600-c42e-11ea-9565-865a3e37921e.png)
+
+The following is result that I run the same POC on sqlite3:
+
+```bash
+🕙[2020-07-12 10:48:27.217] ❯ sqlite3perf generate -r 10000000 -b 2000 -o "?_sync=0" -p
+2020/07/12 10:48:28 Generating records by config &{NumRecs:10000000 BatchSize:2000 Vacuum:false Prepared:true LogSeconds:2 Options:?_sync=0 cmd:0x4ae0680}
+2020/07/12 10:48:28 Opening database
+2020/07/12 10:48:28 Dropping table 'bench' if already present
+2020/07/12 10:48:28 (Re-)creating table 'bench'
+2020/07/12 10:48:28 Setting up the environment
+2020/07/12 10:48:28 Starting progress logging
+2020/07/12 10:48:28 Starting inserts
+2020/07/12 10:48:30   845999/10000000 (  8.46%) written in 2.000076737s, avg: 2.364µs/record, 422983.27 records/s
+2020/07/12 10:48:32  1701999/10000000 ( 17.02%) written in 4.000113037s, avg: 2.35µs/record, 425487.73 records/s
+2020/07/12 10:48:34  2563999/10000000 ( 25.64%) written in 6.000478095s, avg: 2.34µs/record, 427299.12 records/s
+2020/07/12 10:48:36  3417999/10000000 ( 34.18%) written in 8.000240041s, avg: 2.34µs/record, 427237.06 records/s
+2020/07/12 10:48:38  4263999/10000000 ( 42.64%) written in 10.000036515s, avg: 2.345µs/record, 426398.34 records/s
+2020/07/12 10:48:40  5115607/10000000 ( 51.16%) written in 12.000338739s, avg: 2.345µs/record, 426288.63 records/s
+2020/07/12 10:48:42  5969999/10000000 ( 59.70%) written in 14.000139782s, avg: 2.345µs/record, 426424.24 records/s
+2020/07/12 10:48:44  6821999/10000000 ( 68.22%) written in 16.000071248s, avg: 2.345µs/record, 426373.04 records/s
+2020/07/12 10:48:46  7673999/10000000 ( 76.74%) written in 18.000129294s, avg: 2.345µs/record, 426330.22 records/s
+2020/07/12 10:48:48  8529999/10000000 ( 85.30%) written in 20.000615404s, avg: 2.344µs/record, 426486.83 records/s
+2020/07/12 10:48:50  9337999/10000000 ( 93.38%) written in 22.000119926s, avg: 2.355µs/record, 424452.19 records/s
+2020/07/12 10:48:52 10000000/10000000 (100.00%) written in 23.55338367s, avg: 2.355µs/record, 424567.45 records/s
+
+~/Downloads via 🐹 v1.14.4 took 23s
+🕙[2020-07-12 10:48:52.438] ❯ time sqlite3 sqlite3perf.db  "select * from bench limit 5 offset 2850001"
+2850001|454973fc69f76679|a4a3188c7554ebefb8d5749399ad23c593a4dd0dadef8a235b308cc808c194a7
+2850002|ab4a4f8d63461ae8|83b1ffa19dff7a2fd07459b5b2f9aac8e4e14f3fa1584f8d1ed6bca2c37eaef1
+2850003|01629449faf2ae99|e124f6cac5d6a22af62851c1dc547853a97e923a5a7dc8d476f81d355cc522b8
+2850004|15aa9d95a4acf49a|dda4d551ba8c3bf9ac10e22682c614ad331eb4fecea4daa8c6dbe8cd026dfda4
+2850005|47a4d0a49b83a921|373d0bc79d4060c4a0c7b8183592b8ce3732f34e159d8d7bb5ffb7f9ab2a4288
+sqlite3 sqlite3perf.db "select * from bench limit 5 offset 2850001"  0.08s user 0.06s system 98% cpu 0.145 total
+
+~/Downloads via 🐹 v1.14.4
+🕙[2020-07-12 10:49:06.711] ❯ time sqlite3 sqlite3perf.db  "select * from bench where id > 2850000 limit 5"
+2850001|454973fc69f76679|a4a3188c7554ebefb8d5749399ad23c593a4dd0dadef8a235b308cc808c194a7
+2850002|ab4a4f8d63461ae8|83b1ffa19dff7a2fd07459b5b2f9aac8e4e14f3fa1584f8d1ed6bca2c37eaef1
+2850003|01629449faf2ae99|e124f6cac5d6a22af62851c1dc547853a97e923a5a7dc8d476f81d355cc522b8
+2850004|15aa9d95a4acf49a|dda4d551ba8c3bf9ac10e22682c614ad331eb4fecea4daa8c6dbe8cd026dfda4
+2850005|47a4d0a49b83a921|373d0bc79d4060c4a0c7b8183592b8ce3732f34e159d8d7bb5ffb7f9ab2a4288
+sqlite3 sqlite3perf.db "select * from bench where id > 2850000 limit 5"  0.00s user 0.00s system 70% cpu 0.006 total
+
+~/Downloads via 🐹 v1.14.4
+🕙[2020-07-12 10:49:12.989] ❯
+```
+
+## Original blog content
 
 This repository contains a small application which was created while researching a proper 
 answer to the question [Faster sqlite 3 query in go? I need to process 1million+ rows as fast as possible][so:oq].
