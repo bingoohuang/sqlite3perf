@@ -103,6 +103,14 @@ Options |Prepared| speed(records/s)
 
 > As the data showed, the `_sync=0` with `Prepared` reached the max speed.
 
+[`PRAGMA synchronous = 0 | OFF`](https://www.sqlite.org/pragma.html#pragma_synchronous):
+
+SQLite continues without syncing as soon as it has handed data off to the operating system. 
+If the application running SQLite crashes, the data will be safe, 
+but the database might become corrupted if the operating system crashes or the computer loses power 
+before that data has been written to the disk surface. On the other hand, 
+commits can be orders of magnitude faster with synchronous OFF.
+
 ```bash
 $ sqlite3perf generate -r 50000 -b 100 -o "?_sync=0&mode=memory&cache=shared"
 2020/07/11 00:20:14 Generating records by config &{NumRecs:50000 BatchSize:100 Vacuum:false Prepared:false LogSeconds:2 Options:?_sync=0&mode=memory&cache=shared cmd:0x4ae0680}

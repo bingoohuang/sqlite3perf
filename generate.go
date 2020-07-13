@@ -28,32 +28,31 @@ type GenerateCmd struct {
 	cmd *cobra.Command
 }
 
-// nolint:gochecknoglobals
-var generateCmd = GenerateCmd{
-	// generateCmd represents the generate command
-	cmd: &cobra.Command{
-		Use:   "generate",
-		Short: "generate records to benchmark against",
-		Long: `This command generates records to benchmark against.
+// nolint:gochecknoinits
+func init() {
+	c := GenerateCmd{
+		// c represents the generate command
+		cmd: &cobra.Command{
+			Use:   "generate",
+			Short: "generate records to benchmark against",
+			Long: `This command generates records to benchmark against.
 Each record consists of an ID, a 8 byte hex encoded random value
 and a SHA256 hash of said random value.
 
 ATTENTION: The 'bench' table will be DROPPED each time this command is called, before it
 is (re)-generated!
 	`,
-	},
-}
+		},
+	}
 
-// nolint:gochecknoinits
-func init() {
-	rootCmd.AddCommand(generateCmd.cmd)
-	generateCmd.initFlags()
-	generateCmd.cmd.Run = generateCmd.generateRun
+	rootCmd.AddCommand(c.cmd)
+	c.initFlags()
+	c.cmd.Run = c.run
 }
 
 func (g *GenerateCmd) initFlags() {
 	// Here you will define your flags and configuration settings.
-	f := generateCmd.cmd.Flags()
+	f := g.cmd.Flags()
 	f.IntVarP(&g.NumRecs, "records", "r", 1000,
 		"number of records to generate")
 	f.IntVarP(&g.BatchSize, "batch", "b", 100,
@@ -68,7 +67,7 @@ func (g *GenerateCmd) initFlags() {
 		"additional options for sqlite3 connection string, refer to https://github.com/mattn/go-sqlite3")
 }
 
-func (g *GenerateCmd) generateRun(cmd *cobra.Command, args []string) {
+func (g *GenerateCmd) run(cmd *cobra.Command, args []string) {
 	log.Printf("Generating records by config %+v", g)
 
 	log.Println("Opening database")
