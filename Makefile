@@ -10,8 +10,17 @@ sec:
 init:
 	export GOPROXY=https://goproxy.cn
 
-default: init
-	gofmt -s -w .&&go mod tidy&&go fmt ./...&&revive .&&goimports -w .&&golangci-lint run --enable-all&&go install -ldflags="-s -w" ./...
+default: install
+
+lint:
+	gofumports -w .
+	gofumpt -w .
+	gofmt -s -w .
+	go mod tidy
+	go fmt ./...
+	revive .
+	goimports -w .
+	golangci-lint run --enable-all
 
 install: init
 	go install -ldflags="-s -w" ./...
