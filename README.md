@@ -22,7 +22,7 @@ $ sqlite3perf generate -r 10000 -b 10
 2020/07/09 23:08:39 Starting inserts
 2020/07/09 23:08:40 10000/10000 (100.00%) written in 465.618282ms, avg: 46.561µs/record, 21476.82 records/s
 
-# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [23:08:40] 
+# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [23:08:40]
 $ sqlite3perf generate -r 10000 -b 100
 2020/07/09 23:08:43 Generating 10000 records
 2020/07/09 23:08:43 Opening database
@@ -33,7 +33,7 @@ $ sqlite3perf generate -r 10000 -b 100
 2020/07/09 23:08:43 Starting inserts
 2020/07/09 23:08:43 10000/10000 (100.00%) written in 116.118071ms, avg: 11.611µs/record, 86119.24 records/s
 
-# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [23:08:43] 
+# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [23:08:43]
 $ sqlite3perf generate -r 10000 -b 500
 2020/07/09 23:08:48 Generating 10000 records
 2020/07/09 23:08:48 Opening database
@@ -44,7 +44,7 @@ $ sqlite3perf generate -r 10000 -b 500
 2020/07/09 23:08:48 Starting inserts
 2020/07/09 23:08:48 10000/10000 (100.00%) written in 65.55875ms, avg: 6.555µs/record, 152534.94 records/s
 
-# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [23:08:48] 
+# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [23:08:48]
 $ sqlite3perf generate -r 10000 -b 1000
 2020/07/09 23:08:55 Generating 10000 records
 2020/07/09 23:08:55 Opening database
@@ -64,7 +64,7 @@ prepared|128387.08 records/s
 non|104741.21 records/s
 
 ```bash
-$ sqlite3perf generate -r 30000 -p                                                                                                                                                                    [五  7/10 09:57:17 2020]
+$ sqlite3perf generate -r 30000 -p                           [五  7/10 09:57:17 2020]
 2020/07/10 09:57:27 Generating records by config &{NumRecs:30000 BatchSize:100 Vacuum:false Prepared:true LogSeconds:2 cmd:0x4ae0680}
 2020/07/10 09:57:27 Opening database
 2020/07/10 09:57:27 Dropping table 'bench' if already present
@@ -75,7 +75,7 @@ $ sqlite3perf generate -r 30000 -p                                              
 2020/07/10 09:57:27 30000/30000 (100.00%) written in 233.668369ms, avg: 7.788µs/record, 128387.08 records/s
 
 sqlite3perf on  master [!] via 🐹 v1.14.4 via 🐍 v2.7.16
-$ sqlite3perf generate -r 30000                                                                                                                                                                       [五  7/10 09:57:27 2020]
+$ sqlite3perf generate -r 30000                              [五  7/10 09:57:27 2020]
 2020/07/10 09:57:30 Generating records by config &{NumRecs:30000 BatchSize:100 Vacuum:false Prepared:false LogSeconds:2 cmd:0x4ae0680}
 2020/07/10 09:57:30 Opening database
 2020/07/10 09:57:30 Dropping table 'bench' if already present
@@ -92,7 +92,7 @@ sqlite3perf on  master [!] via 🐹 v1.14.4 via 🐍 v2.7.16
 
 Options |Prepared| speed(records/s)
 ---     |---     |---
-`_sync=0&mode=memory&cache=shared`|yes |176285.79 
+`_sync=0&mode=memory&cache=shared`|yes |176285.79
 `_sync=0&mode=memory&cache=shared`|no  |134848.84
 `_sync=0&mode=memory`             |yes |173415.60
 `_sync=0&mode=memory`             |no  |137106.92
@@ -103,13 +103,26 @@ Options |Prepared| speed(records/s)
 
 > As the data showed, the `_sync=0` with `Prepared` reached the max speed.
 
-[`PRAGMA synchronous = 0 | OFF`](https://www.sqlite.org/pragma.html#pragma_synchronous):
+[_sync=0 `PRAGMA synchronous = 0 | OFF`](https://www.sqlite.org/pragma.html#pragma_synchronous):
 
-SQLite continues without syncing as soon as it has handed data off to the operating system. 
-If the application running SQLite crashes, the data will be safe, 
-but the database might become corrupted if the operating system crashes or the computer loses power 
-before that data has been written to the disk surface. On the other hand, 
+SQLite continues without syncing as soon as it has handed data off to the operating system.
+If the application running SQLite crashes, the data will be safe,
+but the database might become corrupted if the operating system crashes or the computer loses power
+before that data has been written to the disk surface. On the other hand,
 commits can be orders of magnitude faster with synchronous OFF.
+
+[mode=memory SQLITE_OPEN_MEMORY](https://www.sqlite.org/c3ref/open.html)
+
+The database will be opened as an in-memory database.
+The database is named by the "filename" argument for the purposes of cache-sharing,
+if shared cache mode is enabled, but the "filename" is otherwise ignored.
+
+[cache=shared SQLite Shared-Cache Mode](https://www.sqlite.org/sharedcache.html)
+
+Starting with version 3.3.0 (2006-01-11), SQLite includes a special "shared-cache" mode (disabled by default)
+intended for use in embedded servers. If shared-cache mode is enabled and a thread
+establishes multiple connections to the same database, the connections share a single data and schema cache.
+This can significantly reduce the quantity of memory and IO required by the system.
 
 ```bash
 $ sqlite3perf generate -r 50000 -b 100 -o "?_sync=0&mode=memory&cache=shared"
@@ -122,7 +135,7 @@ $ sqlite3perf generate -r 50000 -b 100 -o "?_sync=0&mode=memory&cache=shared"
 2020/07/11 00:20:14 Starting inserts
 2020/07/11 00:20:15 50000/50000 (100.00%) written in 349.308517ms, avg: 6.986µs/record, 143139.94 records/s
 
-# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [0:20:15] 
+# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [0:20:15]
 $ sqlite3perf generate -r 50000 -b 100 -o "?_sync=0&mode=memory"
 2020/07/11 00:20:21 Generating records by config &{NumRecs:50000 BatchSize:100 Vacuum:false Prepared:false LogSeconds:2 Options:?_sync=0&mode=memory cmd:0x4ae0680}
 2020/07/11 00:20:21 Opening database
@@ -133,7 +146,7 @@ $ sqlite3perf generate -r 50000 -b 100 -o "?_sync=0&mode=memory"
 2020/07/11 00:20:21 Starting inserts
 2020/07/11 00:20:21 50000/50000 (100.00%) written in 366.342047ms, avg: 7.326µs/record, 136484.47 records/s
 
-# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [0:20:22] 
+# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [0:20:22]
 $ sqlite3perf generate -r 50000 -b 100 -o "?_sync=0"
 2020/07/11 00:20:29 Generating records by config &{NumRecs:50000 BatchSize:100 Vacuum:false Prepared:false LogSeconds:2 Options:?_sync=0 cmd:0x4ae0680}
 2020/07/11 00:20:29 Opening database
@@ -144,8 +157,8 @@ $ sqlite3perf generate -r 50000 -b 100 -o "?_sync=0"
 2020/07/11 00:20:29 Starting inserts
 2020/07/11 00:20:30 50000/50000 (100.00%) written in 376.316893ms, avg: 7.526µs/record, 132866.74 records/s
 
-# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [0:20:30] 
-$ sqlite3perf generate -r 50000 -b 100              
+# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [0:20:30]
+$ sqlite3perf generate -r 50000 -b 100
 2020/07/11 00:20:41 Generating records by config &{NumRecs:50000 BatchSize:100 Vacuum:false Prepared:false LogSeconds:2 Options: cmd:0x4ae0680}
 2020/07/11 00:20:41 Opening database
 2020/07/11 00:20:41 Dropping table 'bench' if already present
@@ -159,7 +172,7 @@ $ sqlite3perf generate -r 50000 -b 100
 ## [Command Line Shell For SQLite](https://www.sqlite.org/cli.html)
 
 ```bash
-$ sqlite3 sqlite3perf.db 
+$ sqlite3 sqlite3perf.db
 SQLite version 3.28.0 2019-04-15 14:49:49
 Enter ".help" for usage hints.
 sqlite> .tables
@@ -175,11 +188,11 @@ sqlite> select count(*) from bench;
 sqlite> .header on
 sqlite> .mode column
 sqlite> select count(*) from bench;
-count(*)  
+count(*)
 ----------
-50000     
+50000
 sqlite> select * from bench limit 3;
-ID          rand              hash                                                            
+ID          rand              hash
 ----------  ----------------  ----------------------------------------------------------------
 0           70d2e0802359c436  b3085192086ceeeeaa2ec20f3ccc9047f3148cd3154ae734ec93adc4ab5661f2
 1           4125c6f752726494  7003a29fa88c302e35b04b9a3011e8b67bcf970f3b9c18bdd26227eff0ea6268
@@ -242,7 +255,7 @@ sqlite3 sqlite3perf.db "select * from bench where id > 2850000 limit 5"  0.00s u
 
 ## Original blog content
 
-This repository contains a small application which was created while researching a proper 
+This repository contains a small application which was created while researching a proper
 answer to the question [Faster sqlite 3 query in go? I need to process 1million+ rows as fast as possible][so:oq].
 
 The assumption there was that Python is faster with accessing SQLite3 than Go is.
@@ -302,7 +315,7 @@ $ sqlite3perf generate -r 1500000 -v
 2020/07/09 22:34:58 Vacuumation took 2.070888698s
 ```
 
-Next I called the Go implementation against those 1.5M records. Both the Go as well as the Python implementation 
+Next I called the Go implementation against those 1.5M records. Both the Go as well as the Python implementation
 basically do the same simple task:
 
 1. Read all entries from the database.
@@ -319,11 +332,11 @@ My assumption explicitly was that Python did some type of lazy loading and/or po
 ### Go implementation
 
 ```bash
-$ sqlite3perf bench 
+$ sqlite3perf bench
 2020/07/09 22:37:23 Running benchmark
 2020/07/09 22:37:23 Time after query: 1.261861ms
 2020/07/09 22:37:23 Beginning loop
-2020/07/09 22:37:23 Acessing the first result set 
+2020/07/09 22:37:23 Acessing the first result set
         ID 0,
         rand: 819f4b54a911924d,
         hash: 507d24d4ae8ec1b7c89939abc6c80959ce7f04334c6d9c3b15ac86c7aaef24da
@@ -334,13 +347,13 @@ took 123.618µs
 2020/07/09 22:37:26 Average 1.809µs per record, 2.714910396s overall
 ```
 
-Note the values for "time after query" ( the time the query command took to return) 
+Note the values for "time after query" ( the time the query command took to return)
 and the time it took to access the first result set after the iteration over the result set was started.
 
 ### Python implementation
 
 ```bash
-$ python bench.py 
+$ python bench.py
 07/09/2020 22:38:19 Starting up
 07/09/2020 22:38:19 Time after query: 232µs
 07/09/2020 22:38:19 Beginning loop
@@ -366,15 +379,15 @@ It took the Go implementation quite a while to return after the SELECT query was
 
 ## Conclusion
 
-Python does seem to do lazy loading of result sets and possibly does not even execute a query unless the according result set 
-is actually accessed. In this simulated scenario, mattn's SQLite driver for Go outperforms Python's by between roughly 100% 
+Python does seem to do lazy loading of result sets and possibly does not even execute a query unless the according result set
+is actually accessed. In this simulated scenario, mattn's SQLite driver for Go outperforms Python's by between roughly 100%
 and orders of magnitude, depending on what you want to do.
 
-Edit: So in order to have a fast processing, implement your task in Go. While it takes longer to send the actual query, 
-accessing the individual rows of the result set is by far faster. I'd suggest starting out with a small subset of your data, 
-say 50k records. Then, to further improve your code, use [profiling](https://blog.golang.org/profiling-go-programs) 
-to identify your bottlenecks. 
+Edit: So in order to have a fast processing, implement your task in Go. While it takes longer to send the actual query,
+accessing the individual rows of the result set is by far faster. I'd suggest starting out with a small subset of your data,
+say 50k records. Then, to further improve your code, use [profiling](https://blog.golang.org/profiling-go-programs)
+to identify your bottlenecks.
 
-Depending on what you want to do during processing, [pipelines](https://blog.golang.org/pipelines) for example might help, 
-but how to improve the processing 
+Depending on what you want to do during processing, [pipelines](https://blog.golang.org/pipelines) for example might help,
+but how to improve the processing
 speed of the task at hand is difficult to say without actual code or a thorough description.
