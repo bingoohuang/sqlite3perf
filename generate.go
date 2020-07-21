@@ -100,9 +100,10 @@ func (g *GenerateCmd) run(cmd *cobra.Command, args []string) {
 	done := make(chan bool)
 	start := time.Now()
 
-	go g.inserts(&i, db, done)
-
-	g.progressLogging(start, &i, done)
+	if g.NumRecs > 0 {
+		go g.inserts(&i, db, done)
+		g.progressLogging(start, &i, done)
+	}
 
 	if g.Vacuum {
 		vacuumDB(db)

@@ -87,7 +87,6 @@ func queryPragma(db *sql.DB, key string) bool {
 	row := db.QueryRow("PRAGMA " + key)
 	previousValue := ""
 	err := row.Scan(&previousValue)
-
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			log.Printf("Unknown PRAGMA %s", key)

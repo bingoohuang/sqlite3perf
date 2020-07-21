@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -55,27 +56,28 @@ var benchCmd = &cobra.Command{
 		h := sha256.New()
 
 		done := make(chan bool)
-		var i int64 = 0
+		c := int64(0)
 		l := time.Now()
-		go func(c *int64) {
+
+		go func() {
 			t := time.NewTicker(time.Second * 2).C
 			for {
 				select {
 				case <-t:
-					log.Println(msg.Sprintf("%d rows processed", *c))
+					log.Println(msg.Sprintf("%d rows processed", atomic.LoadInt64(&c)))
 				case <-done:
 					return
 				}
 			}
-		}(&i)
+		}()
 
 		pre := time.Now()
-		for i := 0; rows.Next(); i++ {
+		for ; rows.Next(); atomic.AddInt64(&c, 1) {
 			if err = rows.Scan(&ID, &rand, &hash); err != nil {
 				log.Fatal(err)
 			}
 
-			if i == 0 {
+			if atomic.LoadInt64(&c) == 0 {
 				log.Printf("Acessing the first result set \n\tID %d,\n\trand: %s,\n\thash: %s\ntook %s",
 					ID, rand, hash, time.Since(pre))
 			}
@@ -94,13 +96,13 @@ var benchCmd = &cobra.Command{
 			if hex.EncodeToString(h.Sum(nil)) != hash {
 				log.Fatal("Hash of original value and persistet hash do not match!")
 			}
-			i++
 		}
 		e := time.Since(start)
 		el := time.Since(l)
 		done <- true
 
-		log.Println(msg.Sprintf("%d rows processed", i))
+		totalRows := atomic.LoadInt64(&c)
+		log.Println(msg.Sprintf("%d rows processed", totalRows))
 		log.Printf("Finished loop after %s", el)
 
 		err = rows.Err()
@@ -108,8 +110,10 @@ var benchCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		log.Printf("Average %s per record, %s overall", time.Duration(e.Nanoseconds()/i), e)
-
+		if totalRows > 0 {
+			duration := time.Duration(e.Nanoseconds() / totalRows)
+			log.Printf("Average %s per record, %s overall", duration, e)
+		}
 	},
 }
 
