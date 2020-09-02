@@ -56,25 +56,42 @@ func (g *ConcurrentCmd) run(cmd *cobra.Command, args []string) {
 	db := setupBench(g.clear)
 	defer db.Close()
 
+	closeCh := make(chan bool)
+	quitCh := make(chan bool)
+
 	for i := 0; i < g.reads; i++ {
-		go g.read(db)
+		go g.read(db, closeCh, quitCh)
 	}
 
 	atomic.StoreInt64(&g.w, g.from)
 
 	for i := 0; i < g.writes; i++ {
-		go g.write(db)
+		go g.write(db, closeCh, quitCh)
 	}
 
 	time.Sleep(g.duration)
+	log.Printf("notify all reads and writes goroutines to exit")
+
+	close(closeCh)
+
+	for i := 0; i < g.reads+g.writes; i++ {
+		<-quitCh
+	}
+
+	log.Printf("all reads and writes goroutines exited")
 }
 
-func (g *ConcurrentCmd) write(db *sql.DB) {
-	time.Sleep(1 * time.Millisecond)
-
+func (g *ConcurrentCmd) write(db *sql.DB, closeCh, quitCh chan bool) {
 	h := NewHasher()
 
-	for i := 1; ; i++ {
+	for {
+		select {
+		case <-closeCh:
+			quitCh <- true
+			return
+		default:
+		}
+
 		s, sum := h.Gen()
 		wc := atomic.AddInt64(&g.w, 1)
 		// log.Printf("insert ID:%d, rand:%s, hash:%s", id, s, sum)
@@ -94,14 +111,21 @@ func (g *ConcurrentCmd) write(db *sql.DB) {
 	}
 }
 
-func (g *ConcurrentCmd) read(db *sql.DB) {
+func (g *ConcurrentCmd) read(db *sql.DB, closeCh, quitCh chan bool) {
 	var (
 		ID   int64
 		rand string
 		hash string
 	)
 
-	for i := 1; ; i++ {
+	for {
+		select {
+		case <-closeCh:
+			quitCh <- true
+			return
+		default:
+		}
+
 		rc := atomic.AddInt64(&g.r, 1)
 		rows, err := db.Query("select * from bench order by ID desc limit 3")
 		if err != nil {
