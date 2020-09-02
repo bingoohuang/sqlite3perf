@@ -1,7 +1,13 @@
 package sqlite3perf
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/hex"
 	"fmt"
+	"hash"
+	"log"
 	"os"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -53,8 +59,10 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 	pf := rootCmd.PersistentFlags()
-	pf.StringVar(&cfgFile, "config", "", "config file (default is $HOME/.sqlite3perf.yaml)")
-	pf.StringVarP(&dbPath, "db", "d", "./sqlite3perf.db", "path to database")
+	pf.StringVarP(&cfgFile, "config", "c", "",
+		"config file (default is $HOME/.sqlite3perf.yaml)")
+	pf.StringVar(&dbPath, "db",
+		"./sqlite3perf.db?_journal=wal&_sync=0", "path to database")
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
@@ -84,4 +92,55 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
+}
+
+func setupBench(clear bool) *sql.DB {
+	log.Println("Opening database")
+	// Database Setup
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		log.Fatalf("Error while opening database '%s': %s", dbPath, err.Error())
+	}
+
+	log.Println("Dropping table 'bench' if already present")
+
+	if clear {
+		if _, err := db.Exec("DROP TABLE IF EXISTS bench"); err != nil {
+			log.Fatalf("Could not delete table 'bench' for (re-)generation of data: %s", err)
+		}
+
+		log.Println("(Re-)creating table 'bench'")
+
+		if _, err := db.Exec("CREATE TABLE bench(ID int PRIMARY KEY ASC, rand TEXT, hash TEXT)"); err != nil {
+			log.Fatalf("Could not create table 'bench': %s", err)
+		}
+
+	}
+	log.Println("Setting up the environment")
+	return db
+}
+
+type Hash struct {
+	b []byte
+	h hash.Hash
+}
+
+func NewHash() *Hash {
+	return &Hash{
+		// We use a 8 byte random value as this is the optimal size for SHA256, which operates on 64bit blocks
+		b: make([]byte, 8),
+		// Initialize the hasher once and reuse it using Reset()
+		h: sha256.New(),
+	}
+}
+
+func (h *Hash) Gen() (randstr, hash string) {
+	if _, err := rand.Read(h.b); err != nil {
+		log.Fatalf("Can not read random values: %s", err)
+	}
+
+	h.h.Reset()           // Reset the hasher so we can reuse it
+	_, _ = h.h.Write(h.b) // Fill the hasher
+
+	return hex.EncodeToString(h.b), hex.EncodeToString(h.h.Sum(nil))
 }

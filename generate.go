@@ -1,10 +1,7 @@
 package sqlite3perf
 
 import (
-	"crypto/rand"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"strings"
@@ -22,7 +19,6 @@ type GenerateCmd struct {
 	// Prepared use sql.DB Prepared statement for later queries or executions.
 	Prepared   bool
 	LogSeconds int
-	Options    string
 
 	// cmd represents the generate command
 	cmd *cobra.Command
@@ -63,34 +59,13 @@ func (g *GenerateCmd) initFlags() {
 		"VACUUM database file after the records generated.")
 	f.BoolVarP(&g.Prepared, "prepared", "p", false,
 		"use sql.DB Prepared statement for later queries or executions.")
-	f.StringVarP(&g.Options, "options", "o", "",
-		"additional options for sqlite3 connection string, refer to https://github.com/mattn/go-sqlite3")
 }
 
 func (g *GenerateCmd) run(cmd *cobra.Command, args []string) {
 	log.Printf("Generating records by config %+v", g)
 
-	log.Println("Opening database")
-	// Database Setup
-	db, err := sql.Open("sqlite3", dbPath+g.Options)
-	if err != nil {
-		log.Fatalf("Error while opening database '%s': %s", dbPath, err.Error())
-	}
+	db := setupBench(true)
 	defer db.Close()
-
-	log.Println("Dropping table 'bench' if already present")
-
-	if _, err := db.Exec("DROP TABLE IF EXISTS bench"); err != nil {
-		log.Fatalf("Could not delete table 'bench' for (re-)generation of data: %s", err)
-	}
-
-	log.Println("(Re-)creating table 'bench'")
-
-	if _, err := db.Exec("CREATE TABLE bench(ID int PRIMARY KEY ASC, rand TEXT, hash TEXT)"); err != nil {
-		log.Fatalf("Could not create table 'bench': %s", err)
-	}
-
-	log.Println("Setting up the environment")
 
 	// Preinitialize i so that we can use it in a goroutine to give proper feedback
 	var i int
@@ -112,11 +87,6 @@ func (g *GenerateCmd) run(cmd *cobra.Command, args []string) {
 
 // nolint:gomnd,gosec
 func (g GenerateCmd) inserts(i *int, db *sql.DB, done chan bool) {
-	// We use a 8 byte random value as this is the optimal size for SHA256,
-	// which operates on 64bit blocks
-	b := make([]byte, 8)
-	// Initialize the hasher once and reuse it using Reset()
-	h := sha256.New()
 	// Prepare values needed so that there aren't any allocations done in the loop
 	query := "INSERT INTO bench(ID, rand, hash) VALUES" + strings.Repeat(",(?,?,?)", g.BatchSize)[1:]
 
@@ -136,17 +106,12 @@ func (g GenerateCmd) inserts(i *int, db *sql.DB, done chan bool) {
 	// Start generation of actual records
 	log.Println("Starting inserts")
 
+	h := NewHash()
 	args := make([]interface{}, 0, g.BatchSize*3)
 
 	for *i = 0; *i < g.NumRecs; *i++ {
-		if _, err := rand.Read(b); err != nil {
-			log.Fatalf("Can not read random values: %s", err)
-		}
-
-		h.Reset()         // Reset the hasher so we can reuse it
-		_, _ = h.Write(b) // Fill the hasher
-
-		args = append(args, *i, hex.EncodeToString(b), hex.EncodeToString(h.Sum(nil)))
+		s, sum := h.Gen()
+		args = append(args, *i, s, sum)
 
 		if len(args) == g.BatchSize*3 {
 			if _, err := execFn(args...); err != nil {

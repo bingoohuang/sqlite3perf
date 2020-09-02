@@ -13,8 +13,7 @@ import (
 // PragmaCmd is the struct representing pragma sub-command.
 type PragmaCmd struct {
 	// cmd represents the generate command
-	cmd     *cobra.Command
-	Options string
+	cmd *cobra.Command
 }
 
 // nolint:gochecknoinits
@@ -33,14 +32,7 @@ like:
 	}
 
 	rootCmd.AddCommand(cmd.cmd)
-	cmd.initFlags()
 	cmd.cmd.Run = cmd.run
-}
-
-func (g *PragmaCmd) initFlags() {
-	f := g.cmd.Flags()
-	f.StringVarP(&g.Options, "options", "o", "",
-		"additional options for sqlite3 connection string, refer to https://github.com/mattn/go-sqlite3")
 }
 
 func (g *PragmaCmd) run(cmd *cobra.Command, args []string) {
@@ -48,7 +40,7 @@ func (g *PragmaCmd) run(cmd *cobra.Command, args []string) {
 
 	log.Println("Opening database")
 	// Database Setup
-	db, err := sql.Open("sqlite3", dbPath+g.Options)
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Fatalf("Error while opening database '%s': %s", dbPath, err.Error())
 	}
@@ -70,8 +62,6 @@ func (g *PragmaCmd) run(cmd *cobra.Command, args []string) {
 		alterPragma(db, key, value, v)
 		queryPragma(db, key)
 	}
-
-	fmt.Println(args)
 }
 
 func alterPragma(db *sql.DB, key string, value string, v string) {
