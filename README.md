@@ -537,6 +537,8 @@ As of SQLite version 3.11.0 (2016-02-15), the WAL file for a single transaction 
 -rw-r--r--. 1 root root  75M 9月   2 20:45 x.db-wal
 ```
 
+set `db.SetMaxOpenConns(1)` to fix this.
+
 ## Summary
 
 It took the Go implementation quite a while to return after the SELECT query was send, while Python seemed to be blazing fast in comparison. However, from the time it took to actually access the first result set, we can see that the Go implementation is more than 500 times faster to actually access the first result set (5.372329ms vs 2719.312ms) and about double as fast for the task at hand as the Python implementation.
@@ -560,3 +562,37 @@ to identify your bottlenecks.
 Depending on what you want to do during processing, [pipelines](https://blog.golang.org/pipelines) for example might help,
 but how to improve the processing
 speed of the task at hand is difficult to say without actual code or a thorough description.
+
+
+## sqlite-concurrent-writing-performance
+
+https://stackoverflow.com/a/35805826/14077979
+
+I recently evaluated SQLite3 performance in Go myself for a network application and learned that it needs a bit of setup before it even remotely usable.
+
+Turn on the Write-Ahead Logging
+
+You need to use WAL PRAGMA journal_mode=WAL. That's mainly why you get such a bad performance. 
+With WAL I can do 10000 concurent writes without transactions in a matter of seconds. Within transaction it will be lightning fast.
+
+Disable connections pool
+
+I use mattn/go-sqlite3 and it opens a database with SQLITE_OPEN_FULLMUTEX flag. 
+It means that every SQLite call will be guarded with a lock. Everything will be serialized. 
+And that's actually what you want with SQLite. The problem with Go in this situation is that you will get random errors 
+that tell you that the database is locked. And the reason why is because of the way the sql/DB works inside. 
+
+Inside it manages pool of connections for you, so it will open multiple SQLite connections 
+and you don't want to do that. To solve this I had to, basically, disable the pool. 
+Call db.SetMaxOpenConns(1) and it will work. Even on very high loads with tens of 
+thousands of concurent reads and writes it works without a problem.
+
+Other solution might be to use SQLITE_OPEN_NOMUTEX to run SQLite in multi-threaded mode and let it manage that for you. 
+But SQLite doesn't really work in multi-threaded apps. Reads can happen in parallel but only one write at a time. 
+You will get occasional busy errors which are completely normal for SQLite but will require you to do something with them - 
+you probably don't want to stop a write operation completely when that happens. 
+That's why most of the time people work with SQLite either synchronously or by sending calls to a separate thread just for the SQLite.
+
+creker:
+
+Thanks a lot! With WAL the performance improved to 3.06 seconds; with connection pool closed the performance further improved to 2.65 seconds :) – Kyle Mar 4 '16 at 22:23

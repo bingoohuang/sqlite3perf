@@ -13,6 +13,7 @@ import (
 // ConcurrentCmd is the struct representing to run concurrent reads and writes sub-command.
 type ConcurrentCmd struct {
 	clear    bool
+	close    bool
 	reads    int
 	from     int64
 	writes   int
@@ -38,8 +39,8 @@ func init() {
 func (g *ConcurrentCmd) initFlags(cmd *cobra.Command) {
 	// Here you will define your flags and configuration settings.
 	f := cmd.Flags()
-	f.BoolVar(&g.clear, "clear", false,
-		"clear the database at startup")
+	f.BoolVar(&g.clear, "clear", false, "clear the database at the startup")
+	f.BoolVar(&g.close, "close", true, "close the database at the end")
 	f.IntVarP(&g.reads, "reads", "r", 100,
 		"number of goroutines to read")
 	f.IntVarP(&g.writes, "writes", "w", 100,
@@ -54,7 +55,9 @@ func (g *ConcurrentCmd) run(cmd *cobra.Command, args []string) {
 	log.Printf("concurrent reads and writes verifying")
 
 	db := setupBench(g.clear)
-	defer db.Close()
+	if g.close {
+		defer db.Close()
+	}
 
 	closeCh := make(chan bool)
 	quitCh := make(chan bool)
