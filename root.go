@@ -101,7 +101,7 @@ func setupBench(clear bool) *sql.DB {
 		log.Fatalf("Error while opening database '%s': %s", dbPath, err.Error())
 	}
 
-	db.SetMaxOpenConns(1
+	db.SetMaxOpenConns(1)
 
 	if clear {
 		log.Println("Dropping table 'bench' if already present")
