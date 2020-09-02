@@ -2,11 +2,12 @@ package sqlite3perf
 
 import (
 	"database/sql"
-	"github.com/spf13/cobra"
 	"log"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/spf13/cobra"
 )
 
 // ConcurrentCmd is the struct representing to run concurrent reads and writes sub-command.
@@ -71,12 +72,12 @@ func (g *ConcurrentCmd) run(cmd *cobra.Command, args []string) {
 func (g *ConcurrentCmd) write(db *sql.DB) {
 	time.Sleep(1 * time.Millisecond)
 
-	h := NewHash()
+	h := NewHasher()
 
 	for i := 1; ; i++ {
 		s, sum := h.Gen()
 		wc := atomic.AddInt64(&g.w, 1)
-		//log.Printf("insert ID:%d, rand:%s, hash:%s", id, s, sum)
+		// log.Printf("insert ID:%d, rand:%s, hash:%s", id, s, sum)
 		if _, err := db.Exec("insert into bench(id, rand, hash) values(?, ?, ?)", wc, s, sum); err != nil {
 			if errs := err.Error(); strings.Contains(errs, "UNIQUE constraint failed:") {
 				log.Printf("Inserting values into database failed: %s", err)

@@ -459,6 +459,84 @@ After at least "ms" milliseconds of sleeping, the handler returns 0 which causes
 
 ~ via ☕ v11.0.8 took 1m
 ```
+
+problems for concurrent reads and writes in WAL mode will cause **Excessively Large WAL Files**
+
+[Avoiding Excessively Large WAL Files](https://www.sqlite.org/wal.html)
+
+In normal cases, new content is appended to the WAL file until the WAL file accumulates about 1000 pages (and is thus about 4MB in size) at which point a checkpoint is automatically run and the WAL file is recycled. The checkpoint does not normally truncate the WAL file (unless the journal_size_limit pragma is set). Instead, it merely causes SQLite to start overwriting the WAL file from the beginning. This is done because it is normally faster to overwrite an existing file than to append. When the last connection to a database closes, that connection does one last checkpoint and then deletes the WAL and its associated shared-memory file, to clean up the disk.
+
+So in the vast majority of cases, applications need not worry about the WAL file at all. SQLite will automatically take care of it. But it is possible to get SQLite into a state where the WAL file will grow without bound, causing excess disk space usage and slow queries speeds. The following bullets enumerate some of the ways that this can happen and how to avoid them.
+
+    - Disabling the automatic checkpoint mechanism. In its default configuration, SQLite will checkpoint the WAL file at the conclusion of any transaction when the WAL file is more than 1000 pages long. However, compile-time and run-time options exist that can disable or defer this automatic checkpoint. If an application disables the automatic checkpoint, then there is nothing to prevent the WAL file from growing excessively.
+    - Checkpoint starvation. A checkpoint is only able to run to completion, and reset the WAL file, if there are no other database connections using the WAL file. If another connection has a read transaction open, then the checkpoint cannot reset the WAL file because doing so might delete content out from under the reader. The checkpoint will do as much work as it can without upsetting the reader, but it cannot run to completion. The checkpoint will start up again where it left off after the next write transaction. This repeats until some checkpoint is able to complete.
+    
+        However, if a database has many concurrent overlapping readers and there is always at least one active reader, then no checkpoints will be able to complete and hence the WAL file will grow without bound.
+    
+        This scenario can be avoided by ensuring that there are "reader gaps": times when no processes are reading from the database and that checkpoints are attempted during those times. In applications with many concurrent readers, one might also consider running manual checkpoints with the SQLITE_CHECKPOINT_RESTART or SQLITE_CHECKPOINT_TRUNCATE option which will ensure that the checkpoint runs to completion before returning. The disadvantage of using SQLITE_CHECKPOINT_RESTART and SQLITE_CHECKPOINT_TRUNCATE is that readers might block while the checkpoint is running.
+    
+    - Very large write transactions. A checkpoint can only complete when no other transactions are running, which means the WAL file cannot be reset in the middle of a write transaction. So a large change to a large database might result in a large WAL file. The WAL file will be checkpointed once the write transaction completes (assuming there are no other readers blocking it) but in the meantime, the file can grow very big.
+
+As of SQLite version 3.11.0 (2016-02-15), the WAL file for a single transaction should be proportional in size to the transaction itself. Pages that are changed by the transaction should only be written into the WAL file once. However, with older versions of SQLite, the same page might be written into the WAL file multiple times if the transaction grows larger than the page cache.
+
+### OK (max 4M of 1000 pages) when only one write with multiple reads 
+
+```bash
+020/09/02 20:43:18 concurrent reads and writes verifying
+2020/09/02 20:43:18 Opening database
+2020/09/02 20:43:18 Dropping table 'bench' if already present
+2020/09/02 20:43:18 (Re-)creating table 'bench'
+2020/09/02 20:43:18 Setting up the environment
+2020/09/02 20:43:20 reads:100000, ID:5461, rand:edded86c6833055e, hash:3da7a03e05d74a1a1d67107a87457489058a58429eef08b5e241bb5ee46d0b0d
+2020/09/02 20:43:21 10000 rows written
+2020/09/02 20:43:21 reads:200000, ID:9998, rand:1dbd5b813dfd1214, hash:27a9454cf9c8aae9e6aab92481260c9b3b5d185f4a6d3aaa017445b409d2e2d1
+2020/09/02 20:43:22 reads:300000, ID:9998, rand:1dbd5b813dfd1214, hash:27a9454cf9c8aae9e6aab92481260c9b3b5d185f4a6d3aaa017445b409d2e2d1
+2020/09/02 20:43:23 reads:400000, ID:15138, rand:2b44719ecd39d028, hash:8c95cb200d81bba772532904a3dc5ac5d4d32f7597d7b5cc985a5c3e00876b31
+
+[root@localhost ~]# while true; do date '+%T'; ls -lh x.db*; sleep 10; done
+20:41:48
+-rw-r--r--. 1 root root  34M 9月   2 20:39 x.db
+-rw-r--r--. 1 root root  32K 9月   2 20:38 x.db-shm
+-rw-r--r--. 1 root root 4.0M 9月   2 20:39 x.db-wal
+20:41:58
+-rw-r--r--. 1 root root  34M 9月   2 20:41 x.db
+-rw-r--r--. 1 root root  32K 9月   2 20:41 x.db-shm
+-rw-r--r--. 1 root root 4.0M 9月   2 20:41 x.db-wal
+```
+
+### Large WAL Files when multiple writes
+
+```bash
+[root@localhost ~]# ./sqlite3perf --db "x.db?_journal=wal&_busy_timeout=10000&_sync=1" concurrent --clear -r 100 -w 100
+2020/09/02 20:45:13 concurrent reads and writes verifying
+2020/09/02 20:45:13 Opening database
+2020/09/02 20:45:13 Dropping table 'bench' if already present
+2020/09/02 20:45:13 (Re-)creating table 'bench'
+2020/09/02 20:45:13 Setting up the environment
+2020/09/02 20:45:25 reads:100000, ID:2911, rand:a6273bb8dafe91cc, hash:df1e3b13a7d186ff1a20664e5057a9ce3fc9dd8d5aec2a2bab3452c6f1a2d0a9
+2020/09/02 20:45:37 reads:200000, ID:6385, rand:b1baacf06f39a750, hash:56dbc526983377a8a2ddd8fb3fcc0a3a4685822ca1b3670ee2842f865466b59b
+2020/09/02 20:45:48 10000 rows written
+2020/09/02 20:45:48 reads:300000, ID:10257, rand:d153306a34902f85, hash:b91cf9130d9f48c5b0948a93b328d8d01e71e1f1878722a31941fa5ced29a8df
+
+[root@localhost ~]# while true; do date '+%T'; ls -lh x.db*; sleep 10; done
+20:45:15
+-rw-r--r--. 1 root root 4.0K 9月   2 20:45 x.db
+-rw-r--r--. 1 root root  32K 9月   2 20:45 x.db-shm
+-rw-r--r--. 1 root root 3.7M 9月   2 20:45 x.db-wal
+20:45:25
+-rw-r--r--. 1 root root 300K 9月   2 20:45 x.db
+-rw-r--r--. 1 root root  64K 9月   2 20:45 x.db-shm
+-rw-r--r--. 1 root root  24M 9月   2 20:45 x.db-wal
+20:45:35
+-rw-r--r--. 1 root root 596K 9月   2 20:45 x.db
+-rw-r--r--. 1 root root  96K 9月   2 20:45 x.db-shm
+-rw-r--r--. 1 root root  48M 9月   2 20:45 x.db-wal
+20:45:45
+-rw-r--r--. 1 root root 928K 9月   2 20:45 x.db
+-rw-r--r--. 1 root root 160K 9月   2 20:45 x.db-shm
+-rw-r--r--. 1 root root  75M 9月   2 20:45 x.db-wal
+```
+
 ## Summary
 
 It took the Go implementation quite a while to return after the SELECT query was send, while Python seemed to be blazing fast in comparison. However, from the time it took to actually access the first result set, we can see that the Go implementation is more than 500 times faster to actually access the first result set (5.372329ms vs 2719.312ms) and about double as fast for the task at hand as the Python implementation.

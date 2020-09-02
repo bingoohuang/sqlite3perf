@@ -1,5 +1,7 @@
-.PHONY: default test
-all: default test
+.PHONY: default test install
+all: default test install
+
+app=sqlite3perf
 
 gosec:
 	go get github.com/securego/gosec/cmd/gosec
@@ -10,9 +12,11 @@ sec:
 init:
 	export GOPROXY=https://goproxy.cn
 
-default: install
-
 lint:
+	#golangci-lint run --enable-all
+	golangci-lint run ./...
+
+fmt:
 	gofumports -w .
 	gofumpt -w .
 	gofmt -s -w .
@@ -20,24 +24,45 @@ lint:
 	go fmt ./...
 	revive .
 	goimports -w .
-	golangci-lint run --enable-all
 
 install: init
-	go install -v -x -ldflags="-s -w" ./...
+	#go install ./...
+	go install -ldflags="-s -w" ./...
+	ls -lh ~/go/bin/${app}
+
+linux: init
+	GOOS=linux GOARCH=amd64 go install -ldflags="-s -w" ./...
+	#GOOS=linux GOARCH=amd64 go install ./...
+	ls -lh ~/go/bin/linux_amd64/${app}
+	upx ~/go/bin/linux_amd64/${app}
+	ls -lh ~/go/bin/linux_amd64/${app}
 
 test: init
-	go test ./...
+	#go test -v ./...
+	go test -v -race ./...
 
-app=sqlite3perf
+bench: init
+	#go test -bench . ./...
+	go test -tags bench -benchmem -bench . ./...
+
+clean:
+	rm coverage.out
+
+cover:
+	go test -v -race -coverpkg=./... -coverprofile=coverage.out ./...
+
+coverview:
+	go tool cover -html=coverage.out
+
 # https://hub.docker.com/_/golang
 # docker run --rm -v "$PWD":/usr/src/myapp -v "$HOME/dockergo":/go -w /usr/src/myapp golang make docker
 # docker run --rm -it -v "$PWD":/usr/src/myapp -w /usr/src/myapp golang bash
 # 静态连接 glibc
 docker:
+	mkdir -p ~/dockergo
 	docker run --rm -v "$$PWD":/usr/src/myapp -v "$$HOME/dockergo":/go -w /usr/src/myapp golang make dockerinstall
-	upx ~/dockergo/bin/${app}
-	mv ~/dockergo/bin/${app}  ~/dockergo/bin/${app}-amd64-glibc2.28
-	gzip ~/dockergo/bin/${app}-amd64-glibc2.28
+	#upx ~/dockergo/bin/${app}
+	gzip -f ~/dockergo/bin/${app}
 
 dockerinstall:
-	go install -v -x -a -ldflags '-extldflags "-static" -s -w' ./...
+	go install -v -x -a -ldflags '-extldflags "-static"' ./...

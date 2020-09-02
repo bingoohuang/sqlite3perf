@@ -106,7 +106,7 @@ func (g GenerateCmd) inserts(i *int, db *sql.DB, done chan bool) {
 	// Start generation of actual records
 	log.Println("Starting inserts")
 
-	h := NewHash()
+	h := NewHasher()
 	args := make([]interface{}, 0, g.BatchSize*3)
 
 	for *i = 0; *i < g.NumRecs; *i++ {

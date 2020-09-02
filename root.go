@@ -96,15 +96,14 @@ func initConfig() {
 
 func setupBench(clear bool) *sql.DB {
 	log.Println("Opening database")
-	// Database Setup
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Fatalf("Error while opening database '%s': %s", dbPath, err.Error())
 	}
 
-	log.Println("Dropping table 'bench' if already present")
-
 	if clear {
+		log.Println("Dropping table 'bench' if already present")
+
 		if _, err := db.Exec("DROP TABLE IF EXISTS bench"); err != nil {
 			log.Fatalf("Could not delete table 'bench' for (re-)generation of data: %s", err)
 		}
@@ -115,18 +114,21 @@ func setupBench(clear bool) *sql.DB {
 			log.Fatalf("Could not create table 'bench': %s", err)
 		}
 
+		log.Println("Setting up the environment")
 	}
-	log.Println("Setting up the environment")
+
 	return db
 }
 
-type Hash struct {
+// Hasher is a structure to generate a random string with its hash value.
+type Hasher struct {
 	b []byte
 	h hash.Hash
 }
 
-func NewHash() *Hash {
-	return &Hash{
+// NewHasher creates a new Hasher instance.
+func NewHasher() *Hasher {
+	return &Hasher{
 		// We use a 8 byte random value as this is the optimal size for SHA256, which operates on 64bit blocks
 		b: make([]byte, 8),
 		// Initialize the hasher once and reuse it using Reset()
@@ -134,7 +136,8 @@ func NewHash() *Hash {
 	}
 }
 
-func (h *Hash) Gen() (randstr, hash string) {
+// Gen generates a random string and its hash value.
+func (h *Hasher) Gen() (randstr, hash string) {
 	if _, err := rand.Read(h.b); err != nil {
 		log.Fatalf("Can not read random values: %s", err)
 	}
