@@ -3,6 +3,8 @@ package sqlite3perf
 import (
 	"database/sql"
 	"log"
+	"os"
+	"os/signal"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -54,6 +56,10 @@ func (g *ConcurrentCmd) initFlags(cmd *cobra.Command) {
 func (g *ConcurrentCmd) run(cmd *cobra.Command, args []string) {
 	log.Printf("concurrent reads and writes verifying")
 
+	// trap Ctrl+C and call cancel on the context
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
 	db := setupBench(g.clear)
 	if g.close {
 		defer db.Close()
@@ -63,18 +69,23 @@ func (g *ConcurrentCmd) run(cmd *cobra.Command, args []string) {
 	quitCh := make(chan bool)
 
 	for i := 0; i < g.reads; i++ {
-		go g.read(db, closeCh, quitCh)
+		go g.read(db, closeCh, quitCh, c)
 	}
 
 	atomic.StoreInt64(&g.w, g.from)
 
 	for i := 0; i < g.writes; i++ {
-		go g.write(db, closeCh, quitCh)
+		go g.write(db, closeCh, quitCh, c)
 	}
 
-	time.Sleep(g.duration)
-	log.Printf("notify all reads and writes goroutines to exit")
+	select {
+	case <-c:
+		log.Printf("interrupt signal catched")
+	case <-time.After(g.duration):
+		log.Printf("sleeped %s", g.duration)
+	}
 
+	log.Printf("notify all reads and writes goroutines to exit")
 	close(closeCh)
 
 	for i := 0; i < g.reads+g.writes; i++ {
@@ -84,13 +95,17 @@ func (g *ConcurrentCmd) run(cmd *cobra.Command, args []string) {
 	log.Printf("all reads and writes goroutines exited")
 }
 
-func (g *ConcurrentCmd) write(db *sql.DB, closeCh, quitCh chan bool) {
+func (g *ConcurrentCmd) write(db *sql.DB, closeCh, quitCh chan bool, c chan os.Signal) {
 	h := NewHasher()
+	defer func() {
+		quitCh <- true
+	}()
 
 	for {
 		select {
 		case <-closeCh:
-			quitCh <- true
+			return
+		case <-c:
 			return
 		default:
 		}
@@ -114,17 +129,22 @@ func (g *ConcurrentCmd) write(db *sql.DB, closeCh, quitCh chan bool) {
 	}
 }
 
-func (g *ConcurrentCmd) read(db *sql.DB, closeCh, quitCh chan bool) {
+func (g *ConcurrentCmd) read(db *sql.DB, closeCh, quitCh chan bool, c chan os.Signal) {
 	var (
 		ID   int64
 		rand string
 		hash string
 	)
 
+	defer func() {
+		quitCh <- true
+	}()
+
 	for {
 		select {
 		case <-closeCh:
-			quitCh <- true
+			return
+		case <-c:
 			return
 		default:
 		}
