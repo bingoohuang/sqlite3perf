@@ -1,5 +1,10 @@
 # sqlite3perf
 
+Conclusion: 
+
+**the `_sync=0&_journal=wal` with `Prepared` reached the max insert speed and good performance 
+for concurrent records and writes among processes.**
+
 This repository wa originally forked from [mwmahlberg/sqlite3perf](https://github.com/mwmahlberg/sqlite3perf) 
 to test sqlite3 performance using [go-sqlite3](https://github.com/mattn/go-sqlite3)
 
@@ -106,7 +111,7 @@ Options |Prepared| speed(records/s)
 `a.db?_sync=0`                         |yes |181639.48
 `a.db?_journal=wal`                    |yes |287841.39
 
-**As the data showed, the `_sync=0&_journal=wal` with `Prepared` reached the max speed.**
+**As the data showed, the `_sync=0&_journal=wal` with `Prepared` reached the max insert speed and good performance for concurrent records and writes among processes.**
 
 [_sync=0 `PRAGMA synchronous = 0 | OFF`](https://www.sqlite.org/pragma.html#pragma_synchronous):
 
