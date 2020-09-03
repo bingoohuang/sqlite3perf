@@ -1,14 +1,11 @@
 # sqlite3perf
 
-Conclusion: 
+1. `_sync=0&_journal=wal` with `Prepared` reached the max insert speed and good performance for concurrent reads and writes across processes.
+1. `db.SetMaxOpenConns(1)` to avoid large WAL Files for concurrent writes.
 
-1. `_sync=0&_journal=wal` with `Prepared` reached the max insert speed and good performance for concurrent records and writes among processes.
-1. `db.SetMaxOpenConns(1)` for concurrent writes to avoid large WAL Files when concurrent writes.
+This repo is originally from [sqlite3perf](https://github.com/mwmahlberg/sqlite3perf) to test sqlite3 performance using [go-sqlite3](https://github.com/mattn/go-sqlite3)
 
-This repository wa originally forked from [mwmahlberg/sqlite3perf](https://github.com/mwmahlberg/sqlite3perf) 
-to test sqlite3 performance using [go-sqlite3](https://github.com/mattn/go-sqlite3)
-
-## Inserts performance among different batch size(prepared mode)
+## Inserts performance among different batch size (prepared mode)
 
 batchSize | cost of 10000 rows inserts | records/s
 ---|---|---
@@ -19,46 +16,12 @@ batchSize | cost of 10000 rows inserts | records/s
 
 ```bash
 $ sqlite3perf generate -r 10000 -b 10
-2020/07/09 23:08:39 Generating 10000 records
-2020/07/09 23:08:39 Opening database
-2020/07/09 23:08:39 Dropping table 'bench' if already present
-2020/07/09 23:08:39 (Re-)creating table 'bench'
-2020/07/09 23:08:39 Setting up the environment
-2020/07/09 23:08:39 Starting progress logging
-2020/07/09 23:08:39 Starting inserts
 2020/07/09 23:08:40 10000/10000 (100.00%) written in 465.618282ms, avg: 46.561µs/record, 21476.82 records/s
-
-# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [23:08:40]
 $ sqlite3perf generate -r 10000 -b 100
-2020/07/09 23:08:43 Generating 10000 records
-2020/07/09 23:08:43 Opening database
-2020/07/09 23:08:43 Dropping table 'bench' if already present
-2020/07/09 23:08:43 (Re-)creating table 'bench'
-2020/07/09 23:08:43 Setting up the environment
-2020/07/09 23:08:43 Starting progress logging
-2020/07/09 23:08:43 Starting inserts
 2020/07/09 23:08:43 10000/10000 (100.00%) written in 116.118071ms, avg: 11.611µs/record, 86119.24 records/s
-
-# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [23:08:43]
 $ sqlite3perf generate -r 10000 -b 500
-2020/07/09 23:08:48 Generating 10000 records
-2020/07/09 23:08:48 Opening database
-2020/07/09 23:08:48 Dropping table 'bench' if already present
-2020/07/09 23:08:48 (Re-)creating table 'bench'
-2020/07/09 23:08:48 Setting up the environment
-2020/07/09 23:08:48 Starting progress logging
-2020/07/09 23:08:48 Starting inserts
 2020/07/09 23:08:48 10000/10000 (100.00%) written in 65.55875ms, avg: 6.555µs/record, 152534.94 records/s
-
-# bingoo @ 192 in ~/GitHub/sqlite3perf on git:master x [23:08:48]
 $ sqlite3perf generate -r 10000 -b 1000
-2020/07/09 23:08:55 Generating 10000 records
-2020/07/09 23:08:55 Opening database
-2020/07/09 23:08:55 Dropping table 'bench' if already present
-2020/07/09 23:08:55 (Re-)creating table 'bench'
-2020/07/09 23:08:55 Setting up the environment
-2020/07/09 23:08:55 Starting progress logging
-2020/07/09 23:08:55 Starting inserts
 2020/07/09 23:08:55 10000/10000 (100.00%) written in 59.466201ms, avg: 5.946µs/record, 168162.75 records/s
 ```
 
@@ -70,28 +33,10 @@ prepared|128387.08 records/s
 non|104741.21 records/s
 
 ```bash
-$ sqlite3perf generate -r 30000 -p                           [五  7/10 09:57:17 2020]
-2020/07/10 09:57:27 Generating records by config &{NumRecs:30000 BatchSize:100 Vacuum:false Prepared:true LogSeconds:2 cmd:0x4ae0680}
-2020/07/10 09:57:27 Opening database
-2020/07/10 09:57:27 Dropping table 'bench' if already present
-2020/07/10 09:57:27 (Re-)creating table 'bench'
-2020/07/10 09:57:27 Setting up the environment
-2020/07/10 09:57:27 Starting progress logging
-2020/07/10 09:57:27 Starting inserts
+$ sqlite3perf generate -r 30000 -p
 2020/07/10 09:57:27 30000/30000 (100.00%) written in 233.668369ms, avg: 7.788µs/record, 128387.08 records/s
-
-sqlite3perf on  master [!] via 🐹 v1.14.4 via 🐍 v2.7.16
 $ sqlite3perf generate -r 30000                              [五  7/10 09:57:27 2020]
-2020/07/10 09:57:30 Generating records by config &{NumRecs:30000 BatchSize:100 Vacuum:false Prepared:false LogSeconds:2 cmd:0x4ae0680}
-2020/07/10 09:57:30 Opening database
-2020/07/10 09:57:30 Dropping table 'bench' if already present
-2020/07/10 09:57:30 (Re-)creating table 'bench'
-2020/07/10 09:57:30 Setting up the environment
-2020/07/10 09:57:30 Starting progress logging
-2020/07/10 09:57:30 Starting inserts
 2020/07/10 09:57:30 30000/30000 (100.00%) written in 286.420228ms, avg: 9.547µs/record, 104741.21 records/s
-
-sqlite3perf on  master [!] via 🐹 v1.14.4 via 🐍 v2.7.16
 ```
 
 ## different connect options.
@@ -138,43 +83,15 @@ This can significantly reduce the quantity of memory and IO required by the syst
 🕙[2020-09-02 17:34:18.567] ❯ sh bench.sh
 + rm -fr a.db
 + sqlite3perf generate -r 50000 -b 100 --db 'a.db?_journal=wal&mode=memory&sync=0' --prepared
-2020/09/02 17:35:00 Generating records by config &{NumRecs:50000 BatchSize:100 Vacuum:false Prepared:true LogSeconds:2 cmd:0xc000015080}
-2020/09/02 17:35:00 Opening database
-2020/09/02 17:35:00 Dropping table 'bench' if already present
-2020/09/02 17:35:00 (Re-)creating table 'bench'
-2020/09/02 17:35:00 Setting up the environment
-2020/09/02 17:35:00 Starting progress logging
-2020/09/02 17:35:00 Starting inserts
 2020/09/02 17:35:00 50000/50000 (100.00%) written in 162.321612ms, avg: 3.246µs/record, 308030.45 records/s
 + rm -fr a.db
 + sqlite3perf generate -r 50000 -b 100 --db 'a.db?_journal=wal&sync=0' --prepared
-2020/09/02 17:35:00 Generating records by config &{NumRecs:50000 BatchSize:100 Vacuum:false Prepared:true LogSeconds:2 cmd:0xc000196dc0}
-2020/09/02 17:35:00 Opening database
-2020/09/02 17:35:00 Dropping table 'bench' if already present
-2020/09/02 17:35:00 (Re-)creating table 'bench'
-2020/09/02 17:35:00 Setting up the environment
-2020/09/02 17:35:00 Starting progress logging
-2020/09/02 17:35:00 Starting inserts
 2020/09/02 17:35:00 50000/50000 (100.00%) written in 156.568178ms, avg: 3.131µs/record, 319349.70 records/s
 + rm -fr a.db
 + sqlite3perf generate -r 50000 -b 100 --db 'a.db?_journal=wal' --prepared
-2020/09/02 17:35:00 Generating records by config &{NumRecs:50000 BatchSize:100 Vacuum:false Prepared:true LogSeconds:2 cmd:0xc000015080}
-2020/09/02 17:35:00 Opening database
-2020/09/02 17:35:00 Dropping table 'bench' if already present
-2020/09/02 17:35:00 (Re-)creating table 'bench'
-2020/09/02 17:35:00 Setting up the environment
-2020/09/02 17:35:00 Starting progress logging
-2020/09/02 17:35:00 Starting inserts
 2020/09/02 17:35:00 50000/50000 (100.00%) written in 173.706775ms, avg: 3.474µs/record, 287841.39 records/s
 + rm -fr a.db
 + sqlite3perf generate -r 50000 -b 100 --db 'a.db?_sync=0' --prepared
-2020/09/02 17:35:00 Generating records by config &{NumRecs:50000 BatchSize:100 Vacuum:false Prepared:true LogSeconds:2 cmd:0xc000015080}
-2020/09/02 17:35:00 Opening database
-2020/09/02 17:35:00 Dropping table 'bench' if already present
-2020/09/02 17:35:00 (Re-)creating table 'bench'
-2020/09/02 17:35:00 Setting up the environment
-2020/09/02 17:35:00 Starting progress logging
-2020/09/02 17:35:00 Starting inserts
 2020/09/02 17:35:00 50000/50000 (100.00%) written in 275.270552ms, avg: 5.505µs/record, 181639.48 records/s
 ```
 
@@ -221,22 +138,10 @@ The following is result that I run the same POC on sqlite3:
 ```bash
 🕙[2020-07-12 10:48:27.217] ❯ sqlite3perf generate -r 10000000 -b 2000 --db "a.db?_sync=0" -p
 2020/07/12 10:48:28 Generating records by config &{NumRecs:10000000 BatchSize:2000 Vacuum:false Prepared:true LogSeconds:2 Options:?_sync=0 cmd:0x4ae0680}
-2020/07/12 10:48:28 Opening database
-2020/07/12 10:48:28 Dropping table 'bench' if already present
-2020/07/12 10:48:28 (Re-)creating table 'bench'
-2020/07/12 10:48:28 Setting up the environment
-2020/07/12 10:48:28 Starting progress logging
-2020/07/12 10:48:28 Starting inserts
 2020/07/12 10:48:30   845999/10000000 (  8.46%) written in 2.000076737s, avg: 2.364µs/record, 422983.27 records/s
 2020/07/12 10:48:32  1701999/10000000 ( 17.02%) written in 4.000113037s, avg: 2.35µs/record, 425487.73 records/s
 2020/07/12 10:48:34  2563999/10000000 ( 25.64%) written in 6.000478095s, avg: 2.34µs/record, 427299.12 records/s
-2020/07/12 10:48:36  3417999/10000000 ( 34.18%) written in 8.000240041s, avg: 2.34µs/record, 427237.06 records/s
-2020/07/12 10:48:38  4263999/10000000 ( 42.64%) written in 10.000036515s, avg: 2.345µs/record, 426398.34 records/s
-2020/07/12 10:48:40  5115607/10000000 ( 51.16%) written in 12.000338739s, avg: 2.345µs/record, 426288.63 records/s
-2020/07/12 10:48:42  5969999/10000000 ( 59.70%) written in 14.000139782s, avg: 2.345µs/record, 426424.24 records/s
-2020/07/12 10:48:44  6821999/10000000 ( 68.22%) written in 16.000071248s, avg: 2.345µs/record, 426373.04 records/s
-2020/07/12 10:48:46  7673999/10000000 ( 76.74%) written in 18.000129294s, avg: 2.345µs/record, 426330.22 records/s
-2020/07/12 10:48:48  8529999/10000000 ( 85.30%) written in 20.000615404s, avg: 2.344µs/record, 426486.83 records/s
+...
 2020/07/12 10:48:50  9337999/10000000 ( 93.38%) written in 22.000119926s, avg: 2.355µs/record, 424452.19 records/s
 2020/07/12 10:48:52 10000000/10000000 (100.00%) written in 23.55338367s, avg: 2.355µs/record, 424567.45 records/s
 
@@ -306,13 +211,6 @@ First I generated 1.5M records and vacuumed the sqlite database afterwards with
 
 ```bash
 🕙[2020-09-02 16:24:53.875] ❯ sqlite3perf generate -r 1500000 -v
-2020/09/02 16:25:54 Generating records by config &{NumRecs:1500000 BatchSize:100 Vacuum:true Prepared:false LogSeconds:2 cmd:0xc000015080}
-2020/09/02 16:25:54 Opening database
-2020/09/02 16:25:54 Dropping table 'bench' if already present
-2020/09/02 16:25:54 (Re-)creating table 'bench'
-2020/09/02 16:25:54 Setting up the environment
-2020/09/02 16:25:54 Starting progress logging
-2020/09/02 16:25:54 Starting inserts
 2020/09/02 16:25:56  528430/1500000 ( 35.23%) written in 2.000424246s, avg: 3.785µs/record, 264161.47 records/s
 2020/09/02 16:25:58 1071399/1500000 ( 71.43%) written in 4.000412966s, avg: 3.733µs/record, 267822.10 records/s
 2020/09/02 16:25:59 1500000/1500000 (100.00%) written in 5.582068414s, avg: 3.721µs/record, 268717.60 records/s
@@ -409,11 +307,6 @@ After at least "ms" milliseconds of sleeping, the handler returns 0 which causes
 
 ```bash
 🕙[2020-09-02 17:19:17.308] ❯ sqlite3perf --db "x.db?_journal=wal&_busy_timeout=10000" concurrent --clear
-2020/09/02 17:20:11 concurrent reads and writes verifying
-2020/09/02 17:20:11 Opening database
-2020/09/02 17:20:11 Dropping table 'bench' if already present
-2020/09/02 17:20:11 (Re-)creating table 'bench'
-2020/09/02 17:20:11 Setting up the environment
 2020/09/02 17:20:15 reads:100000, ID:100002752, rand:4341d085bd1ef089, hash:3356357e90f4de6ec29e065e2325b5ebedadfe313150a111551e6ea62a2e6bbd
 2020/09/02 17:20:16 10000 rows written
 2020/09/02 17:20:20 reads:200000, ID:100008721, rand:c3b03b90eb7d82b7, hash:09d8f2305af10891b09e0c8336d483afc5f2a020e098304e483effa8337693c2
@@ -431,16 +324,10 @@ After at least "ms" milliseconds of sleeping, the handler returns 0 which causes
 2020/09/02 17:20:59 reads:1000000, ID:100037035, rand:e4b32a5591fb00d0, hash:bcd15ff6c4671f279d32f2fceba62f75271fc24915990ed8a81cc6ef5b51c9f3
 2020/09/02 17:21:07 reads:1100000, ID:100045546, rand:3608d10694b34817, hash:4d506c08de493f815449ff1a8119e2c516b309ea601603c72a15b70c1d7c904d
 2020/09/02 17:21:09 60000 rows written
-
-~ via ☕ v11.0.8 took 1m 
 ```
 
 ```bash
 🕙[2020-09-02 17:19:16.639] ❯ sqlite3perf --db "x.db?_journal=wal&_busy_timeout=10000" concurrent --from=99999999
-2020/09/02 17:20:13 concurrent reads and writes verifying
-2020/09/02 17:20:13 Opening database
-2020/09/02 17:20:13 Dropping table 'bench' if already present
-2020/09/02 17:20:13 Setting up the environment
 2020/09/02 17:20:20 reads:100000, ID:100007664, rand:f9a76648f3501c24, hash:5cbbb03c5aaeaa96dacfb8015de447e12a71f4ed3f7e3bed094ffb4a658a0a21
 2020/09/02 17:20:21 10000 rows written
 2020/09/02 17:20:26 reads:200000, ID:100016526, rand:1321db58f14a8f82, hash:6a6f204f477fe099c5eb8b42d5103f4d70cec6dfabd9e821906f58d2851f3e83
@@ -456,8 +343,6 @@ After at least "ms" milliseconds of sleeping, the handler returns 0 which causes
 2020/09/02 17:21:04 reads:900000, ID:100041634, rand:0349944d1020e9b4, hash:c5a9179681a722730d969cc4e4747f4dca92bf475a6c06716c1ab287dacd498b
 2020/09/02 17:21:11 50000 rows written
 2020/09/02 17:21:12 reads:1000000, ID:100051340, rand:1f66e768a09f3757, hash:fa1c35e61e747381a215702247eb3909f9ff22cfe3ef72f107f753736f541e72
-
-~ via ☕ v11.0.8 took 1m
 ```
 
 problems for concurrent reads and writes in WAL mode will cause **Excessively Large WAL Files**
@@ -482,11 +367,7 @@ As of SQLite version 3.11.0 (2016-02-15), the WAL file for a single transaction 
 ### OK (max 4M of 1000 pages) when only one write with multiple reads 
 
 ```bash
-020/09/02 20:43:18 concurrent reads and writes verifying
-2020/09/02 20:43:18 Opening database
-2020/09/02 20:43:18 Dropping table 'bench' if already present
-2020/09/02 20:43:18 (Re-)creating table 'bench'
-2020/09/02 20:43:18 Setting up the environment
+[root@localhost ~]# ./sqlite3perf --db "x.db?_journal=wal&_busy_timeout=10000&_sync=1" concurrent --clear -r 1 -w 1
 2020/09/02 20:43:20 reads:100000, ID:5461, rand:edded86c6833055e, hash:3da7a03e05d74a1a1d67107a87457489058a58429eef08b5e241bb5ee46d0b0d
 2020/09/02 20:43:21 10000 rows written
 2020/09/02 20:43:21 reads:200000, ID:9998, rand:1dbd5b813dfd1214, hash:27a9454cf9c8aae9e6aab92481260c9b3b5d185f4a6d3aaa017445b409d2e2d1
@@ -508,11 +389,6 @@ As of SQLite version 3.11.0 (2016-02-15), the WAL file for a single transaction 
 
 ```bash
 [root@localhost ~]# ./sqlite3perf --db "x.db?_journal=wal&_busy_timeout=10000&_sync=1" concurrent --clear -r 100 -w 100
-2020/09/02 20:45:13 concurrent reads and writes verifying
-2020/09/02 20:45:13 Opening database
-2020/09/02 20:45:13 Dropping table 'bench' if already present
-2020/09/02 20:45:13 (Re-)creating table 'bench'
-2020/09/02 20:45:13 Setting up the environment
 2020/09/02 20:45:25 reads:100000, ID:2911, rand:a6273bb8dafe91cc, hash:df1e3b13a7d186ff1a20664e5057a9ce3fc9dd8d5aec2a2bab3452c6f1a2d0a9
 2020/09/02 20:45:37 reads:200000, ID:6385, rand:b1baacf06f39a750, hash:56dbc526983377a8a2ddd8fb3fcc0a3a4685822ca1b3670ee2842f865466b59b
 2020/09/02 20:45:48 10000 rows written
