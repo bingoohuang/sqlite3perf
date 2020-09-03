@@ -1,6 +1,7 @@
 package sqlite3perf
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
@@ -9,6 +10,8 @@ import (
 	"hash"
 	"log"
 	"os"
+	"os/signal"
+	"time"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -45,7 +48,16 @@ After the database is filled, one can run 'bench.py' against it
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	ctx, cancel := context.WithCancel(context.Background())
+	kill := make(chan os.Signal, 1)
+	signal.Notify(kill, os.Interrupt)
+
+	go func() {
+		<-kill // trap Ctrl+C and call cancel on the context
+		cancel()
+	}()
+
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -150,4 +162,11 @@ func (h *Hasher) Gen() (randstr, hash string) {
 	_, _ = h.h.Write(h.b) // Fill the hasher
 
 	return hex.EncodeToString(h.b), hex.EncodeToString(h.h.Sum(nil))
+}
+
+// SleepContext sleep within a context.
+func SleepContext(ctx context.Context, delay time.Duration) bool {
+	timeout, _ := context.WithTimeout(ctx, delay)
+	<-timeout.Done()
+	return timeout.Err() != nil
 }

@@ -1,10 +1,9 @@
 package sqlite3perf
 
 import (
+	"context"
 	"database/sql"
 	"log"
-	"os"
-	"os/signal"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -55,10 +54,6 @@ func (g *ConcurrentCmd) initFlags(f *pflag.FlagSet) {
 func (g *ConcurrentCmd) run(cmd *cobra.Command, args []string) {
 	log.Printf("concurrent reads and writes verifying")
 
-	// trap Ctrl+C and call cancel on the context
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-
 	db := setupBench(g.clear, g.maxConns)
 	if g.close {
 		defer db.Close()
@@ -67,22 +62,19 @@ func (g *ConcurrentCmd) run(cmd *cobra.Command, args []string) {
 	closeCh := make(chan bool)
 	quitCh := make(chan bool)
 
+	ctx, _ := context.WithTimeout(cmd.Context(), g.duration)
+
 	for i := 0; i < g.reads; i++ {
-		go g.read(db, closeCh, quitCh, c)
+		go g.read(ctx, db, closeCh, quitCh)
 	}
 
 	atomic.StoreInt64(&g.w, g.from)
 
 	for i := 0; i < g.writes; i++ {
-		go g.write(db, closeCh, quitCh, c)
+		go g.write(ctx, db, closeCh, quitCh)
 	}
 
-	select {
-	case <-c:
-		log.Printf("interrupt signal catched")
-	case <-time.After(g.duration):
-		log.Printf("sleeped %s", g.duration)
-	}
+	<-ctx.Done()
 
 	log.Printf("notify all reads and writes goroutines to exit")
 	close(closeCh)
@@ -94,17 +86,21 @@ func (g *ConcurrentCmd) run(cmd *cobra.Command, args []string) {
 	log.Printf("all reads and writes goroutines exited")
 }
 
-func (g *ConcurrentCmd) write(db *sql.DB, closeCh, quitCh chan bool, c chan os.Signal) {
+func (g *ConcurrentCmd) write(ctx context.Context, db *sql.DB, closeCh, quitCh chan bool) {
 	h := NewHasher()
 	defer func() {
 		quitCh <- true
 	}()
 
-	for goon(closeCh, c) {
+	for goon(ctx, closeCh) {
 		s, sum := h.Gen()
 		wc := atomic.AddInt64(&g.w, 1)
 		// log.Printf("insert ID:%d, rand:%s, hash:%s", id, s, sum)
-		if _, err := db.Exec("insert into bench(id, rand, hash) values(?, ?, ?)", wc, s, sum); err != nil {
+		if _, err := db.ExecContext(ctx, "insert into bench(id, rand, hash) values(?, ?, ?)", wc, s, sum); err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+
 			if errs := err.Error(); strings.Contains(errs, "UNIQUE constraint failed:") {
 				log.Printf("Inserting values into database failed: %s", err)
 			} else {
@@ -115,12 +111,12 @@ func (g *ConcurrentCmd) write(db *sql.DB, closeCh, quitCh chan bool, c chan os.S
 		rc := wc - g.from
 		if rc%10000 == 0 {
 			log.Printf("%d rows written", rc)
-			time.Sleep(1 * time.Second)
+			SleepContext(ctx, 1*time.Second)
 		}
 	}
 }
 
-func (g *ConcurrentCmd) read(db *sql.DB, closeCh, quitCh chan bool, c chan os.Signal) {
+func (g *ConcurrentCmd) read(ctx context.Context, db *sql.DB, closeCh, quitCh chan bool) {
 	var (
 		ID   int64
 		rand string
@@ -131,9 +127,13 @@ func (g *ConcurrentCmd) read(db *sql.DB, closeCh, quitCh chan bool, c chan os.Si
 		quitCh <- true
 	}()
 
-	for goon(closeCh, c) {
+	for goon(ctx, closeCh) {
 		rc := atomic.AddInt64(&g.r, 1)
-		rows, err := db.Query("select * from bench order by ID desc limit 3")
+		rows, err := db.QueryContext(ctx, "select * from bench order by ID desc limit 3")
+		if ctx.Err() != nil {
+			return
+		}
+
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -146,7 +146,7 @@ func (g *ConcurrentCmd) read(db *sql.DB, closeCh, quitCh chan bool, c chan os.Si
 
 		if rc%100000 == 0 {
 			log.Printf("reads:%d, ID:%d, rand:%s, hash:%s", rc, ID, rand, hash)
-			time.Sleep(1 * time.Second)
+			SleepContext(ctx, g.duration)
 		}
 
 		if err := rows.Close(); err != nil {
@@ -155,11 +155,11 @@ func (g *ConcurrentCmd) read(db *sql.DB, closeCh, quitCh chan bool, c chan os.Si
 	}
 }
 
-func goon(closeCh chan bool, c chan os.Signal) bool {
+func goon(ctx context.Context, closeCh chan bool) bool {
 	select {
 	case <-closeCh:
 		return false
-	case <-c:
+	case <-ctx.Done():
 		return false
 	default:
 		return true
