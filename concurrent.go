@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/spf13/pflag"
+
 	"github.com/spf13/cobra"
 )
 
@@ -19,6 +21,7 @@ type ConcurrentCmd struct {
 	reads    int
 	from     int64
 	writes   int
+	maxConns int
 	duration time.Duration
 
 	w, r int64
@@ -26,31 +29,27 @@ type ConcurrentCmd struct {
 
 // nolint:gochecknoinits
 func init() {
+	c := ConcurrentCmd{}
 	cmd := &cobra.Command{
 		Use:   "concurrent",
 		Short: "concurrent reads and writes test",
 		Long:  `verify the supporting condition for concurrent reads and writes of sqlite3.`,
+		Run:   c.run,
 	}
-	c := ConcurrentCmd{}
 
 	rootCmd.AddCommand(cmd)
-	c.initFlags(cmd)
-	cmd.Run = c.run
+	c.initFlags(cmd.Flags())
 }
 
-func (g *ConcurrentCmd) initFlags(cmd *cobra.Command) {
+func (g *ConcurrentCmd) initFlags(f *pflag.FlagSet) {
 	// Here you will define your flags and configuration settings.
-	f := cmd.Flags()
 	f.BoolVar(&g.clear, "clear", false, "clear the database at the startup")
 	f.BoolVar(&g.close, "close", true, "close the database at the end")
-	f.IntVarP(&g.reads, "reads", "r", 100,
-		"number of goroutines to read")
-	f.IntVarP(&g.writes, "writes", "w", 100,
-		"number of goroutines to write")
-	f.Int64Var(&g.from, "from", 0,
-		"ID from for writes")
-	f.DurationVarP(&g.duration, "duration", "d", 60*time.Second,
-		"druation to run")
+	f.IntVarP(&g.reads, "reads", "r", 100, "number of goroutines to read")
+	f.IntVarP(&g.writes, "writes", "w", 100, "number of goroutines to write")
+	f.Int64Var(&g.from, "from", 0, "ID from for writes")
+	f.IntVarP(&g.maxConns, "maxConns", "m", 1, "max of open connections to db.")
+	f.DurationVarP(&g.duration, "duration", "d", 60*time.Second, "duration to run")
 }
 
 func (g *ConcurrentCmd) run(cmd *cobra.Command, args []string) {
@@ -60,7 +59,7 @@ func (g *ConcurrentCmd) run(cmd *cobra.Command, args []string) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	db := setupBench(g.clear)
+	db := setupBench(g.clear, g.maxConns)
 	if g.close {
 		defer db.Close()
 	}
@@ -101,15 +100,7 @@ func (g *ConcurrentCmd) write(db *sql.DB, closeCh, quitCh chan bool, c chan os.S
 		quitCh <- true
 	}()
 
-	for {
-		select {
-		case <-closeCh:
-			return
-		case <-c:
-			return
-		default:
-		}
-
+	for goon(closeCh, c) {
 		s, sum := h.Gen()
 		wc := atomic.AddInt64(&g.w, 1)
 		// log.Printf("insert ID:%d, rand:%s, hash:%s", id, s, sum)
@@ -140,15 +131,7 @@ func (g *ConcurrentCmd) read(db *sql.DB, closeCh, quitCh chan bool, c chan os.Si
 		quitCh <- true
 	}()
 
-	for {
-		select {
-		case <-closeCh:
-			return
-		case <-c:
-			return
-		default:
-		}
-
+	for goon(closeCh, c) {
 		rc := atomic.AddInt64(&g.r, 1)
 		rows, err := db.Query("select * from bench order by ID desc limit 3")
 		if err != nil {
@@ -169,5 +152,16 @@ func (g *ConcurrentCmd) read(db *sql.DB, closeCh, quitCh chan bool, c chan os.Si
 		if err := rows.Close(); err != nil {
 			log.Fatal(err)
 		}
+	}
+}
+
+func goon(closeCh chan bool, c chan os.Signal) bool {
+	select {
+	case <-closeCh:
+		return false
+	case <-c:
+		return false
+	default:
+		return true
 	}
 }

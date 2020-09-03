@@ -12,27 +12,23 @@ import (
 
 // PragmaCmd is the struct representing pragma sub-command.
 type PragmaCmd struct {
-	// cmd represents the generate command
-	cmd *cobra.Command
 }
 
 // nolint:gochecknoinits
 func init() {
-	cmd := PragmaCmd{
-		// generateCmd represents the generate command
-		cmd: &cobra.Command{
-			Use:   "pragma",
-			Short: "pragma to get or set",
-			Long: `PRAGMA Statements specific to SQLite,
+	c := PragmaCmd{}
+	cmd := &cobra.Command{
+		Use:   "pragma",
+		Short: "pragma to get or set",
+		Long: `PRAGMA Statements specific to SQLite,
 like:
 1). sqlite3perf pragma synchronous auto_vacuum journal_mode
 2). sqlite3perf pragma synchronous=0 auto_vacuum=NONE
 `,
-		},
+		Run: c.run,
 	}
 
-	rootCmd.AddCommand(cmd.cmd)
-	cmd.cmd.Run = cmd.run
+	rootCmd.AddCommand(cmd)
 }
 
 func (g *PragmaCmd) run(cmd *cobra.Command, args []string) {

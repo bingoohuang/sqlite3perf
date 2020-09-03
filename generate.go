@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/pflag"
+
 	_ "github.com/mattn/go-sqlite3" // import sqlite3 driver
 	"github.com/spf13/cobra"
 )
@@ -19,36 +21,30 @@ type GenerateCmd struct {
 	// Prepared use sql.DB Prepared statement for later queries or executions.
 	Prepared   bool
 	LogSeconds int
-
-	// cmd represents the generate command
-	cmd *cobra.Command
 }
 
 // nolint:gochecknoinits
 func init() {
-	c := GenerateCmd{
-		// c represents the generate command
-		cmd: &cobra.Command{
-			Use:   "generate",
-			Short: "generate records to benchmark against",
-			Long: `This command generates records to benchmark against.
+	c := GenerateCmd{}
+	cmd := &cobra.Command{
+		Use:   "generate",
+		Short: "generate records to benchmark against",
+		Long: `This command generates records to benchmark against.
 Each record consists of an ID, a 8 byte hex encoded random value
 and a SHA256 hash of said random value.
 
 ATTENTION: The 'bench' table will be DROPPED each time this command is called, before it
 is (re)-generated!
 	`,
-		},
+		Run: c.run,
 	}
 
-	rootCmd.AddCommand(c.cmd)
-	c.initFlags()
-	c.cmd.Run = c.run
+	rootCmd.AddCommand(cmd)
+	c.initFlags(cmd.Flags())
 }
 
-func (g *GenerateCmd) initFlags() {
+func (g *GenerateCmd) initFlags(f *pflag.FlagSet) {
 	// Here you will define your flags and configuration settings.
-	f := g.cmd.Flags()
 	f.IntVarP(&g.NumRecs, "records", "r", 1000,
 		"number of records to generate")
 	f.IntVarP(&g.BatchSize, "batch", "b", 100,
@@ -64,7 +60,7 @@ func (g *GenerateCmd) initFlags() {
 func (g *GenerateCmd) run(cmd *cobra.Command, args []string) {
 	log.Printf("Generating records by config %+v", g)
 
-	db := setupBench(true)
+	db := setupBench(true, 1)
 	defer db.Close()
 
 	// Preinitialize i so that we can use it in a goroutine to give proper feedback

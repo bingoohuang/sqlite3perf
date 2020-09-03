@@ -2,8 +2,8 @@
 
 Conclusion: 
 
-**the `_sync=0&_journal=wal` with `Prepared` reached the max insert speed and good performance 
-for concurrent records and writes among processes.**
+1. `_sync=0&_journal=wal` with `Prepared` reached the max insert speed and good performance for concurrent records and writes among processes.
+1. `db.SetMaxOpenConns(1)` for concurrent writes to avoid large WAL Files when concurrent writes.
 
 This repository wa originally forked from [mwmahlberg/sqlite3perf](https://github.com/mwmahlberg/sqlite3perf) 
 to test sqlite3 performance using [go-sqlite3](https://github.com/mattn/go-sqlite3)
@@ -504,7 +504,7 @@ As of SQLite version 3.11.0 (2016-02-15), the WAL file for a single transaction 
 -rw-r--r--. 1 root root 4.0M 9月   2 20:41 x.db-wal
 ```
 
-### Large WAL Files when multiple writes
+### Large WAL Files when concurrent writes
 
 ```bash
 [root@localhost ~]# ./sqlite3perf --db "x.db?_journal=wal&_busy_timeout=10000&_sync=1" concurrent --clear -r 100 -w 100
@@ -537,7 +537,10 @@ As of SQLite version 3.11.0 (2016-02-15), the WAL file for a single transaction 
 -rw-r--r--. 1 root root  75M 9月   2 20:45 x.db-wal
 ```
 
-set `db.SetMaxOpenConns(1)` to fix this.
+fix methods:
+
+1. set `db.SetMaxOpenConns(1)` to fix this.
+1. `db.Close()` will clear the WAL files.
 
 ## Summary
 

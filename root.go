@@ -94,14 +94,16 @@ func initConfig() {
 	}
 }
 
-func setupBench(clear bool) *sql.DB {
+func setupBench(clear bool, maxOpenConns int) *sql.DB {
 	log.Println("Opening database")
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Fatalf("Error while opening database '%s': %s", dbPath, err.Error())
 	}
 
-	db.SetMaxOpenConns(1)
+	if maxOpenConns > 0 {
+		db.SetMaxOpenConns(maxOpenConns)
+	}
 
 	if clear {
 		log.Println("Dropping table 'bench' if already present")
