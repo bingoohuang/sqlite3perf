@@ -475,3 +475,78 @@ That's why most of the time people work with SQLite either synchronously or by s
 creker:
 
 Thanks a lot! With WAL the performance improved to 3.06 seconds; with connection pool closed the performance further improved to 2.65 seconds :) – Kyle Mar 4 '16 at 22:23
+
+## MySQL batch insert
+
+`sqlite3perf --db "root:root@tcp(127.0.0.1:3306)/card?charset=utf8mb4" --driverName mysql generate -b 1000 -p -r 100000`
+
+```bash
+```
+
+set `max_allowed_packet` to 512M
+
+```bash
+$ mysql -u... -p...
+
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 31
+Server version: 5.5.12-log MySQL Community Server (GPL)
+
+Copyright (c) 2000, 2010, Oracle and/or its affiliates. All rights reserved.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> show variables like 'max_allowed_packet';
++--------------------+----------+
+| Variable_name      | Value    |
++--------------------+----------+
+| max_allowed_packet | 16777216 |
++--------------------+----------+
+1 row in set (0.00 sec)
+
+mysql> set max_allowed_packet=1024 * 1024 * 512;
+ERROR 1621 (HY000): SESSION variable 'max_allowed_packet' is read-only. Use SET GLOBAL to assign the value
+mysql> set global max_allowed_packet=1024 * 1024 * 512;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> show variables like 'max_allowed_packet';
++--------------------+----------+
+| Variable_name      | Value    |
++--------------------+----------+
+| max_allowed_packet | 16777216 |
++--------------------+----------+
+1 row in set (0.00 sec)
+
+mysql> exit
+Bye
+
+$ mysql -u... -p...
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 32
+Server version: 5.5.12-log MySQL Community Server (GPL)
+
+Copyright (c) 2000, 2010, Oracle and/or its affiliates. All rights reserved.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> show variables like 'max_allowed_packet';
++--------------------+-----------+
+| Variable_name      | Value     |
++--------------------+-----------+
+| max_allowed_packet | 536870912 |
++--------------------+-----------+
+1 row in set (0.00 sec)
+```
+
+```bash
+$ sqlite3perf --table ff --db "root:root@tcp(127.0.0.1:3306)/card?charset=utf8mb4" --driverName mysql generate -b 3000 -p -r 100000
+2020/10/01 13:30:15 100000/100000 (100.00%) written in 1m9.639436292s, avg: 696.394µs/record, 1435.97 records/s
+```

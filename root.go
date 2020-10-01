@@ -7,10 +7,13 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"github.com/m1ome/randstr"
+	"github.com/valyala/fastrand"
 	"hash"
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -20,8 +23,10 @@ import (
 
 // nolint:gochecknoglobals
 var (
-	cfgFile string
-	dbPath  string
+	cfgFile    string
+	driverName string
+	dbPath     string
+	table      string
 
 	// rootCmd represents the base command when called without any subcommands
 	rootCmd = &cobra.Command{
@@ -73,6 +78,8 @@ func init() {
 	pf := rootCmd.PersistentFlags()
 	pf.StringVarP(&cfgFile, "config", "c", "",
 		"config file (default is $HOME/.sqlite3perf.yaml)")
+	pf.StringVar(&driverName, "driverName", "sqlite3", "driver name(sqlite3/mysql)")
+	pf.StringVar(&table, "table", "bench", "table name(bench/ff)")
 	pf.StringVar(&dbPath, "db",
 		"./sqlite3perf.db?_journal=wal&_sync=0", "path to database")
 	// Cobra also supports local flags, which will only run
@@ -106,9 +113,73 @@ func initConfig() {
 	}
 }
 
+type Table struct {
+	InsertFieldsNum int
+	DropSQL         string
+	CreateSQL       string
+	Generator       func(i int) []interface{}
+	CreateInsertSQL func(batchSize int) string
+}
+
+var tables = map[string]Table{
+	"bench": {
+		DropSQL:         `DROP TABLE IF EXISTS bench`,
+		CreateSQL:       `CREATE TABLE bench(ID int PRIMARY KEY, rand varchar(100), hash varchar(100))`,
+		InsertFieldsNum: 3,
+		Generator:       NewHasher().Generator,
+		CreateInsertSQL: func(batchSize int) string {
+			return "INSERT INTO bench(ID, rand, hash) VALUES" + strings.Repeat(",(?,?,?)", batchSize)[1:]
+		},
+	},
+
+	"ff": {
+		DropSQL: `DROP TABLE IF EXISTS ff`,
+		CreateSQL: `CREATE TABLE ff (
+		  id bigint(20) NOT NULL AUTO_INCREMENT,
+		  f01 varchar(255),
+		  f02 varchar(255),
+		  f03 varchar(255),
+		  f04 varchar(255),
+		  f05 varchar(255),
+		  f06 varchar(255),
+		  f07 varchar(255),
+		  f08 varchar(255),
+		  f09 varchar(255),
+		  f10 varchar(255),
+		  f11 varchar(255),
+		  f12 varchar(255),
+		  f13 varchar(255),
+		  f14 varchar(255),
+		  f15 varchar(255),
+		  f16 varchar(255),
+		  f17 varchar(255),
+		  f18 varchar(255),
+		  created datetime NOT NULL COMMENT '创建时间',
+		  updated datetime NOT NULL COMMENT '更新时间',
+		  PRIMARY KEY (id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT = '测试批量插入表'`,
+		InsertFieldsNum: 20,
+		Generator: func(i int) []interface{} {
+			vars := make([]interface{}, 20)
+
+			for i := 0; i < 18; i++ {
+				vars[i] = randstr.GetString(int(fastrand.Uint32n(250) + 5))
+			}
+
+			vars[18], vars[19] = time.Now(), time.Now()
+
+			return vars
+		},
+		CreateInsertSQL: func(batchSize int) string {
+			return "INSERT INTO ff(f01, f02, f03, f04, f05, f06, f07, f08, f09, f10, f11, f12, f13, f14, f15, f16, f17, f18, created, updated) VALUES" +
+				strings.Repeat(",(?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?)", batchSize)[1:]
+		},
+	},
+}
+
 func setupBench(clear bool, maxOpenConns int) *sql.DB {
 	log.Println("Opening database")
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open(driverName, dbPath)
 	if err != nil {
 		log.Fatalf("Error while opening database '%s': %s", dbPath, err.Error())
 	}
@@ -118,16 +189,21 @@ func setupBench(clear bool, maxOpenConns int) *sql.DB {
 	}
 
 	if clear {
-		log.Println("Dropping table 'bench' if already present")
+		log.Println("Dropping table", table, "if already present")
 
-		if _, err := db.Exec("DROP TABLE IF EXISTS bench"); err != nil {
+		t, ok := tables[table]
+		if !ok {
+			log.Fatalf("%s does not exist", table)
+		}
+
+		if _, err := db.Exec(t.DropSQL); err != nil {
 			log.Fatalf("Could not delete table 'bench' for (re-)generation of data: %s", err)
 		}
 
-		log.Println("(Re-)creating table 'bench'")
+		log.Println("(Re-)creating table", table)
 
-		if _, err := db.Exec("CREATE TABLE bench(ID int PRIMARY KEY ASC, rand TEXT, hash TEXT)"); err != nil {
-			log.Fatalf("Could not create table 'bench': %s", err)
+		if _, err := db.Exec(t.CreateSQL); err != nil {
+			log.Fatalf("Could not create table %s: %s", table, err)
 		}
 
 		log.Println("Setting up the environment")
@@ -150,6 +226,14 @@ func NewHasher() *Hasher {
 		// Initialize the hasher once and reuse it using Reset()
 		h: sha256.New(),
 	}
+}
+
+// Gen generates a random string and its hash value.
+func (h *Hasher) Generator(index int) []interface{} {
+	ret := make([]interface{}, 3)
+	ret[0] = index
+	ret[1], ret[2] = h.Gen()
+	return ret
 }
 
 // Gen generates a random string and its hash value.

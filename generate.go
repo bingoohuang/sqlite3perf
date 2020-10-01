@@ -4,12 +4,12 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/spf13/pflag"
 
-	_ "github.com/mattn/go-sqlite3" // import sqlite3 driver
+	_ "github.com/go-sql-driver/mysql" // import mysql driver
+	_ "github.com/mattn/go-sqlite3"    // import sqlite3 driver
 	"github.com/spf13/cobra"
 )
 
@@ -83,8 +83,13 @@ func (g *GenerateCmd) run(cmd *cobra.Command, args []string) {
 
 // nolint:gomnd,gosec
 func (g GenerateCmd) inserts(i *int, db *sql.DB, done chan bool) {
+	t, ok := tables[table]
+	if !ok {
+		log.Fatalf("%s does not exist", table)
+	}
+
 	// Prepare values needed so that there aren't any allocations done in the loop
-	query := "INSERT INTO bench(ID, rand, hash) VALUES" + strings.Repeat(",(?,?,?)", g.BatchSize)[1:]
+	query := t.CreateInsertSQL(g.BatchSize)
 
 	var execFn func(args ...interface{}) (sql.Result, error)
 
@@ -102,22 +107,19 @@ func (g GenerateCmd) inserts(i *int, db *sql.DB, done chan bool) {
 	// Start generation of actual records
 	log.Println("Starting inserts")
 
-	h := NewHasher()
 	args := make([]interface{}, 0, g.BatchSize*3)
 
 	for *i = 0; *i < g.NumRecs; *i++ {
-		s, sum := h.Gen()
-		args = append(args, *i, s, sum)
+		args = append(args, t.Generator(*i)...)
 
-		if len(args) == g.BatchSize*3 {
+		if len(args) == g.BatchSize*t.InsertFieldsNum {
 			if _, err := execFn(args...); err != nil {
 				log.Fatalf("Inserting values into database failed: %s", err)
 			}
 
 			args = args[0:0]
 		} else if lastNum > 0 && *i+1 == g.NumRecs {
-			query := "INSERT INTO bench(ID, rand, hash) VALUES" +
-				strings.Repeat(",(?,?,?)", lastNum)[1:]
+			query := t.CreateInsertSQL(lastNum)
 			if _, err := db.Exec(query, args...); err != nil {
 				log.Fatalf("Inserting values into database failed: %s", err)
 			}
