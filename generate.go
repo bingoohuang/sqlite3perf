@@ -88,13 +88,28 @@ func (g GenerateCmd) inserts(i *int, db *sql.DB, done chan bool) {
 		log.Fatalf("%s does not exist", table)
 	}
 
+	// MySQL 协议定义两个字节表示传输参数个数，因此最大值是2^16-1=65536
+	// 防止出现错误：failed Error 1390: Prepared statement contains too many placeholders
+	// The prepared statement protocol defines a signed `2 bytes` short to describe the number of parameters
+	// that will be retrieved from the server. The client firstly calls COM_STMT_PREPARE,
+	// for which it receives a COM_STMT_PREPARE response if successful.
+	if driverName == "mysql" && g.BatchSize*t.InsertFieldsNum > 65535 {
+		batchSize := 65535 / t.InsertFieldsNum
+		log.Printf("adjust batch size to %d", batchSize)
+		g.BatchSize = batchSize
+	}
+
 	// Prepare values needed so that there aren't any allocations done in the loop
 	query := t.CreateInsertSQL(g.BatchSize)
 
 	var execFn func(args ...interface{}) (sql.Result, error)
 
 	if g.Prepared {
-		ps, _ := db.Prepare(query)
+		ps, err := db.Prepare(query)
+		if err != nil {
+			log.Fatalf("prepare query len %d query %s failed %s", len(query), abbrievate(query, 1000), err)
+		}
+
 		defer ps.Close()
 
 		execFn = ps.Exec
@@ -128,6 +143,18 @@ func (g GenerateCmd) inserts(i *int, db *sql.DB, done chan bool) {
 
 	// Signal the progress log that we are done
 	done <- true
+}
+
+func abbrievate(s string, maxSize int) string {
+	if len(s) < maxSize {
+		return s
+	}
+
+	if maxSize <= 3 {
+		return "..."[:maxSize]
+	}
+
+	return s[:maxSize-3] + "..."
 }
 
 // nolint:gomnd
