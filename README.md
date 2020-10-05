@@ -550,3 +550,5 @@ mysql> show variables like 'max_allowed_packet';
 $ sqlite3perf --table ff --db "root:root@tcp(127.0.0.1:3306)/card?charset=utf8mb4" --driverName mysql generate -b 3000 -p -r 100000
 2020/10/01 13:30:15 100000/100000 (100.00%) written in 1m9.639436292s, avg: 696.394µs/record, 1435.97 records/s
 ```
+
+[如何快速安全的插入千万条数据？](https://mp.weixin.qq.com/s/qq7MQkyi7TsFIG7jLuYPBw)
