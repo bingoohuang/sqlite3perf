@@ -6,6 +6,8 @@ import (
 	"log"
 	"time"
 
+	"go.uber.org/atomic"
+
 	"github.com/spf13/pflag"
 
 	_ "github.com/go-sql-driver/mysql" // import mysql driver
@@ -21,6 +23,8 @@ type GenerateCmd struct {
 	// Prepared use sql.DB Prepared statement for later queries or executions.
 	Prepared   bool
 	LogSeconds int
+
+	currentSeq *atomic.Uint32
 }
 
 // nolint:gochecknoinits
@@ -64,7 +68,7 @@ func (g *GenerateCmd) run(cmd *cobra.Command, args []string) {
 	defer db.Close()
 
 	// Preinitialize i so that we can use it in a goroutine to give proper feedback
-	var i int
+	g.currentSeq = atomic.NewUint32(0)
 	// Set up logging mechanism. We use a goroutine here which logs the
 	// records already generated every two seconds until "done" is signaled
 	// via the channel.
@@ -72,8 +76,8 @@ func (g *GenerateCmd) run(cmd *cobra.Command, args []string) {
 	start := time.Now()
 
 	if g.NumRecs > 0 {
-		go g.inserts(&i, db, done)
-		g.progressLogging(start, &i, done)
+		go g.inserts(db, done)
+		g.progressLogging(start, done)
 	}
 
 	if g.Vacuum {
@@ -82,7 +86,7 @@ func (g *GenerateCmd) run(cmd *cobra.Command, args []string) {
 }
 
 // nolint:gomnd,gosec
-func (g GenerateCmd) inserts(i *int, db *sql.DB, done chan bool) {
+func (g *GenerateCmd) inserts(db *sql.DB, done chan bool) {
 	t, ok := tables[table]
 	if !ok {
 		log.Fatalf("%s does not exist", table)
@@ -124,8 +128,10 @@ func (g GenerateCmd) inserts(i *int, db *sql.DB, done chan bool) {
 
 	args := make([]interface{}, 0, g.BatchSize*3)
 
-	for *i = 0; *i < g.NumRecs; *i++ {
-		args = append(args, t.Generator(*i)...)
+	g.currentSeq.Load()
+
+	for i := int(g.currentSeq.Load()); i < g.NumRecs; i = int(g.currentSeq.Add(1)) {
+		args = append(args, t.Generator(i)...)
 
 		if len(args) == g.BatchSize*t.InsertFieldsNum {
 			if _, err := execFn(args...); err != nil {
@@ -133,7 +139,7 @@ func (g GenerateCmd) inserts(i *int, db *sql.DB, done chan bool) {
 			}
 
 			args = args[0:0]
-		} else if lastNum > 0 && *i+1 == g.NumRecs {
+		} else if lastNum > 0 && i+1 == g.NumRecs {
 			query := t.CreateInsertSQL(lastNum)
 			if _, err := db.Exec(query, args...); err != nil {
 				log.Fatalf("Inserting values into database failed: %s", err)
@@ -158,7 +164,7 @@ func abbreviate(s string, maxSize int) string {
 }
 
 // nolint:gomnd
-func (g GenerateCmd) progressLogging(start time.Time, i *int, done chan bool) {
+func (g *GenerateCmd) progressLogging(start time.Time, done chan bool) {
 	log.Println("Starting progress logging")
 
 	l := len(fmt.Sprintf("%d", g.NumRecs))
@@ -175,9 +181,10 @@ out:
 		// records	created, we want some feedback every 2 seconds
 		case <-ticker.C:
 			dur := time.Since(start)
+			i := g.currentSeq.Load()
 			log.Printf("%*d/%*d (%6.2f%%) written in %s, avg: %s/record, %2.2f records/s",
-				l, *i, l, g.NumRecs, p*float64(*i), dur,
-				time.Duration(dur.Nanoseconds()/int64(*i)), float64(*i)/dur.Seconds())
+				l, i, l, g.NumRecs, p*float64(i), dur,
+				time.Duration(dur.Nanoseconds()/int64(i)), float64(i)/dur.Seconds())
 		case <-done:
 			break out
 		}

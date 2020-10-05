@@ -7,14 +7,15 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"github.com/m1ome/randstr"
-	"github.com/valyala/fastrand"
 	"hash"
 	"log"
 	"os"
 	"os/signal"
 	"strings"
 	"time"
+
+	"github.com/m1ome/randstr"
+	"github.com/valyala/fastrand"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -113,6 +114,7 @@ func initConfig() {
 	}
 }
 
+// Table defines the structure of perference table information.
 type Table struct {
 	InsertFieldsNum int
 	DropSQL         string
@@ -228,7 +230,7 @@ func NewHasher() *Hasher {
 	}
 }
 
-// Gen generates a random string and its hash value.
+// Generator generates a random string and its hash value.
 func (h *Hasher) Generator(index int) []interface{} {
 	ret := make([]interface{}, 3)
 	ret[0] = index
@@ -250,7 +252,8 @@ func (h *Hasher) Gen() (randstr, hash string) {
 
 // SleepContext sleep within a context.
 func SleepContext(ctx context.Context, delay time.Duration) bool {
-	timeout, _ := context.WithTimeout(ctx, delay)
+	timeout, timeoutFn := context.WithTimeout(ctx, delay)
+	defer timeoutFn()
 	<-timeout.Done()
 	return timeout.Err() != nil
 }

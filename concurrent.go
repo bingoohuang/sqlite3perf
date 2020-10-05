@@ -62,7 +62,8 @@ func (g *ConcurrentCmd) run(cmd *cobra.Command, args []string) {
 	closeCh := make(chan bool)
 	quitCh := make(chan bool)
 
-	ctx, _ := context.WithTimeout(cmd.Context(), g.duration)
+	ctx, cancelFn := context.WithTimeout(cmd.Context(), g.duration)
+	defer cancelFn()
 
 	for i := 0; i < g.reads; i++ {
 		go g.read(ctx, db, closeCh, quitCh)
