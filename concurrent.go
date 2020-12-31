@@ -93,11 +93,12 @@ func (g *ConcurrentCmd) write(ctx context.Context, db *sql.DB, closeCh, quitCh c
 		quitCh <- true
 	}()
 
+	const query = "insert into bench(id, rand, hash) values(?, ?, ?)"
 	for goon(ctx, closeCh) {
 		s, sum := h.Gen()
 		wc := atomic.AddInt64(&g.w, 1)
 		// log.Printf("insert ID:%d, rand:%s, hash:%s", id, s, sum)
-		if _, err := db.ExecContext(ctx, "insert into bench(id, rand, hash) values(?, ?, ?)", wc, s, sum); err != nil {
+		if _, err := db.ExecContext(ctx, query, wc, s, sum); err != nil {
 			if ctx.Err() != nil {
 				return
 			}
@@ -128,9 +129,10 @@ func (g *ConcurrentCmd) read(ctx context.Context, db *sql.DB, closeCh, quitCh ch
 		quitCh <- true
 	}()
 
+	const query = "select * from bench order by ID desc limit 3"
 	for goon(ctx, closeCh) {
 		rc := atomic.AddInt64(&g.r, 1)
-		rows, err := db.QueryContext(ctx, "select * from bench order by ID desc limit 3")
+		rows, err := db.QueryContext(ctx, query)
 		if ctx.Err() != nil {
 			return
 		}

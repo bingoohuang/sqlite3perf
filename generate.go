@@ -49,16 +49,11 @@ is (re)-generated!
 
 func (g *GenerateCmd) initFlags(f *pflag.FlagSet) {
 	// Here you will define your flags and configuration settings.
-	f.IntVarP(&g.NumRecs, "records", "r", 1000,
-		"number of records to generate")
-	f.IntVarP(&g.BatchSize, "batch", "b", 100,
-		"number of records as a batch to insert at one time")
-	f.IntVarP(&g.LogSeconds, "interval", "i", 2,
-		"interval seconds between progress messages")
-	f.BoolVarP(&g.Vacuum, "vacuum", "v", false,
-		"VACUUM database file after the records generated.")
-	f.BoolVarP(&g.Prepared, "prepared", "p", false,
-		"use sql.DB Prepared statement for later queries or executions.")
+	f.IntVarP(&g.NumRecs, "records", "r", 1000, "number of records to generate")
+	f.IntVarP(&g.BatchSize, "batch", "b", 100, "number of records as a batch to insert at one time")
+	f.IntVarP(&g.LogSeconds, "interval", "i", 2, "interval seconds between progress messages")
+	f.BoolVarP(&g.Vacuum, "vacuum", "v", false, "VACUUM database file after the records generated.")
+	f.BoolVarP(&g.Prepared, "prepared", "p", false, "use sql.DB Prepared statement for later queries or executions.")
 }
 
 func (g *GenerateCmd) run(cmd *cobra.Command, args []string) {
@@ -105,26 +100,23 @@ func (g *GenerateCmd) inserts(db *sql.DB, done chan bool) {
 
 	// Prepare values needed so that there aren't any allocations done in the loop
 	query := t.CreateInsertSQL(g.BatchSize)
-
-	var execFn func(args ...interface{}) (sql.Result, error)
+	execFn := func(args ...interface{}) (sql.Result, error) { return db.Exec(query, args...) }
 
 	if g.Prepared {
 		ps, err := db.Prepare(query)
 		if err != nil {
-			log.Fatalf("prepare query len %d query %s failed %s", len(query), abbreviate(query, 1000), err)
+			log.Fatalf("prepare len:%d query %s error %s", len(query), abbreviate(query, 1000), err)
 		}
 
 		defer ps.Close()
 
 		execFn = ps.Exec
-	} else {
-		execFn = func(args ...interface{}) (sql.Result, error) { return db.Exec(query, args...) }
 	}
 
 	lastNum := g.NumRecs % g.BatchSize
 
 	// Start generation of actual records
-	log.Println("Starting inserts")
+	log.Print("Starting inserts")
 
 	args := make([]interface{}, 0, g.BatchSize*3)
 
@@ -165,7 +157,7 @@ func abbreviate(s string, maxSize int) string {
 
 // nolint:gomnd
 func (g *GenerateCmd) progressLogging(start time.Time, done chan bool) {
-	log.Println("Starting progress logging")
+	log.Print("Starting progress logging")
 
 	l := len(fmt.Sprintf("%d", g.NumRecs))
 	// Precalculate the percentage each record represents
@@ -197,15 +189,15 @@ out:
 }
 
 func vacuumDB(db *sql.DB) {
-	log.Println("Vaccumating database file")
+	log.Print("Vaccum database file")
 
 	start := time.Now()
 
 	if _, err := db.Exec("VACUUM"); err != nil {
-		log.Printf("Vacuumating database caused an error: %s", err)
-		log.Println("Proceed with according caution.")
+		log.Printf("Vacuum database caused an error: %s", err)
+		log.Print("Proceed with according caution.")
 	}
 
 	since := time.Since(start)
-	log.Printf("Vacuumation took %s", since)
+	log.Printf("Vacuum took %s", since)
 }

@@ -173,14 +173,15 @@ var tables = map[string]Table{
 			return vars
 		},
 		CreateInsertSQL: func(batchSize int) string {
-			return "INSERT INTO ff(f01, f02, f03, f04, f05, f06, f07, f08, f09, f10, f11, f12, f13, f14, f15, f16, f17, f18, created, updated) VALUES" +
+			return "INSERT INTO ff(f01, f02, f03, f04, f05, f06, f07, f08, f09, f10, " +
+				"f11, f12, f13, f14, f15, f16, f17, f18, created, updated) VALUES" +
 				strings.Repeat(",(?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?)", batchSize)[1:]
 		},
 	},
 }
 
 func setupBench(clear bool, maxOpenConns int) *sql.DB {
-	log.Println("Opening database")
+	log.Print("Opening database")
 	db, err := sql.Open(driverName, dbPath)
 	if err != nil {
 		log.Fatalf("Error while opening database '%s': %s", dbPath, err.Error())
@@ -191,7 +192,7 @@ func setupBench(clear bool, maxOpenConns int) *sql.DB {
 	}
 
 	if clear {
-		log.Println("Dropping table", table, "if already present")
+		log.Print("Dropping table", table, "if already present")
 
 		t, ok := tables[table]
 		if !ok {
@@ -202,13 +203,13 @@ func setupBench(clear bool, maxOpenConns int) *sql.DB {
 			log.Fatalf("Could not delete table 'bench' for (re-)generation of data: %s", err)
 		}
 
-		log.Println("(Re-)creating table", table)
+		log.Print("(Re-)creating table", table)
 
 		if _, err := db.Exec(t.CreateSQL); err != nil {
 			log.Fatalf("Could not create table %s: %s", table, err)
 		}
 
-		log.Println("Setting up the environment")
+		log.Print("Setting up the environment")
 	}
 
 	return db

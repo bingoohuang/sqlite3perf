@@ -11,14 +11,11 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
 )
 
 // nolint:gochecknoinits,wsl
 func init() {
 	// benchCmd represents the bench command
-	// nolint:gochecknoglobals,gomnd
 	c := &cobra.Command{
 		Use:   "bench",
 		Short: "do a simple benchmark",
@@ -44,8 +41,7 @@ func init() {
 }
 
 func benchRun(cmd *cobra.Command, args []string) {
-	msg := message.NewPrinter(language.English)
-	log.Println("Running benchmark")
+	log.Print("Running benchmark")
 
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
@@ -68,8 +64,7 @@ func benchRun(cmd *cobra.Command, args []string) {
 	}
 	defer rows.Close()
 	log.Printf("Time after query: %s", time.Since(start))
-
-	log.Println("Beginning loop")
+	log.Printf("Beginning loop")
 
 	h := sha256.New()
 
@@ -82,7 +77,7 @@ func benchRun(cmd *cobra.Command, args []string) {
 		for {
 			select {
 			case <-t:
-				log.Println(msg.Sprintf("%d rows processed", atomic.LoadInt64(&c)))
+				log.Printf("%d rows processed", atomic.LoadInt64(&c))
 			case <-done:
 				return
 			}
@@ -105,14 +100,14 @@ func benchRun(cmd *cobra.Command, args []string) {
 		// Do something halfway useful
 		v, err := hex.DecodeString(rand)
 		if err != nil {
-			log.Println("Could not decode hex string of original value to byte slice: ", err)
+			log.Print("Could not decode hex string of original value to byte slice: ", err)
 			// Not necessarily fatal, so we can...
 			continue
 		}
 
 		_, _ = h.Write(v)
 		if hex.EncodeToString(h.Sum(nil)) != hash {
-			log.Fatal("Hash of original value and persistet hash do not match!")
+			log.Fatal("Hash of original value and persist hash do not match!")
 		}
 	}
 	e := time.Since(start)
@@ -120,7 +115,7 @@ func benchRun(cmd *cobra.Command, args []string) {
 	done <- true
 
 	totalRows := atomic.LoadInt64(&c)
-	log.Println(msg.Sprintf("%d rows processed", totalRows))
+	log.Printf("%d rows processed", totalRows)
 	log.Printf("Finished loop after %s", el)
 
 	err = rows.Err()

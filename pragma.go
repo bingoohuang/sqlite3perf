@@ -34,7 +34,7 @@ like:
 func (g *PragmaCmd) run(cmd *cobra.Command, args []string) {
 	log.Printf("Generating records by config %+v", g)
 
-	log.Println("Opening database")
+	log.Print("Opening database")
 	// Database Setup
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
