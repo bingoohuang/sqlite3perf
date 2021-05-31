@@ -77,8 +77,7 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 	pf := rootCmd.PersistentFlags()
-	pf.StringVarP(&cfgFile, "config", "c", "",
-		"config file (default is $HOME/.sqlite3perf.yaml)")
+	pf.StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.sqlite3perf.yaml)")
 	pf.StringVar(&driverName, "driverName", "sqlite3", "driver name(sqlite3/mysql)")
 	pf.StringVar(&table, "table", "bench", "table name(bench/ff)")
 	pf.StringVar(&dbPath, "db",
@@ -114,7 +113,7 @@ func initConfig() {
 	}
 }
 
-// Table defines the structure of perference table information.
+// Table defines the structure of preference table information.
 type Table struct {
 	InsertFieldsNum int
 	DropSQL         string
