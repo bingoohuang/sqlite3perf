@@ -140,7 +140,7 @@ func (g *ParseCmd) run(cmd *cobra.Command, args []string) {
 		rows++
 		totalRows++
 		if rows >= 1000 {
-			Printf("Rows %d insertted, cost %s", totalRows, time.Since(start))
+			Printf("Rows %d generated, cost %s", totalRows, time.Since(start))
 			rows = 0
 		}
 	}
@@ -149,7 +149,7 @@ func (g *ParseCmd) run(cmd *cobra.Command, args []string) {
 		log.Fatalf("scanner error: %v", err)
 	}
 
-	Printf("Rows %d insertted, cost %s", totalRows, time.Since(start))
+	Printf("Rows %d generated, cost %s", totalRows, time.Since(start))
 }
 
 func NewScanLines(start string) bufio.SplitFunc {
