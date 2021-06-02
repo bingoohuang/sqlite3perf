@@ -2,6 +2,7 @@ package sqlite3perf
 
 import (
 	"bufio"
+	"bytes"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -20,8 +21,7 @@ import (
 // ParseCmd is the struct representing parse sub-command.
 type ParseCmd struct {
 	File         string
-	Samplee      string
-	Pattern      string
+	PatternFile  string
 	QuoteReplace string
 	LineStart    string
 }
@@ -42,8 +42,7 @@ func init() {
 func (g *ParseCmd) initFlags(f *pflag.FlagSet) {
 	// Here you will define your flags and configuration settings.
 	f.StringVarP(&g.File, "file", "f", "", "file to parse")
-	f.StringVarP(&g.Samplee, "samplee", "", "", "samplee, eg: 2021/05/29 13:09:46 Replay POST   http://1.2.3.4/solr/zz/update?v=2, cost 1.256731096s , status: 200   ")
-	f.StringVarP(&g.Pattern, "pattern", "", "", "pattern, eg: time               ########method#path|path                        #######cost|duration##########status")
+	f.StringVarP(&g.PatternFile, "pattern", "p", "", "pattern file ")
 	f.StringVarP(&g.QuoteReplace, "quote", "", "\"", "quote replacement")
 	f.StringVarP(&g.LineStart, "start", "", "2021/05/29 13:09:46", "line start")
 }
@@ -54,11 +53,27 @@ func (g *ParseCmd) run(cmd *cobra.Command, args []string) {
 	log.Print("Opening database")
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		log.Fatalf("Error while opening database '%s': %s", dbPath, err.Error())
+		log.Fatalf("Error while opening database '%s': %v", dbPath, err)
 	}
 	defer db.Close()
 
-	pattern, err := logline.NewPattern(g.Samplee, g.Pattern, logline.WithReplace(g.QuoteReplace, `"`))
+	patternData, err := os.ReadFile(g.PatternFile)
+	if err != nil {
+		log.Fatalf("Error read file '%s': %v", g.PatternFile, err)
+	}
+
+	data := string(patternData)
+	n := strings.IndexByte(data, '\n')
+	if n < 0 {
+		log.Fatalf("failed to read first line as samplee at '%s'", g.PatternFile)
+	}
+	samplee := data[:n]
+	pattern := data[n+1:]
+	if n := strings.IndexByte(pattern, '\n'); n > 0 {
+		pattern = pattern[:n]
+	}
+
+	p, err := logline.NewPattern(samplee, pattern, logline.WithReplace(g.QuoteReplace, `"`))
 	if err != nil {
 		log.Fatalf("failed to parse logline pattern: %v", err)
 	}
@@ -66,7 +81,7 @@ func (g *ParseCmd) run(cmd *cobra.Command, args []string) {
 	createTable := `create table ` + table + `(`
 	insertTable := `insert into ` + table + `(`
 	columns := 0
-	for _, dot := range pattern.Dots {
+	for _, dot := range p.Dots {
 		if !dot.Valid() {
 			continue
 		}
@@ -105,11 +120,14 @@ func (g *ParseCmd) run(cmd *cobra.Command, args []string) {
 
 	ctx := cmd.Context()
 	for scanner.Scan() && ctx.Err() == nil {
-		data := scanner.Bytes()
-		m := pattern.ParseBytes(data)
+		line := bytes.TrimSpace(scanner.Bytes())
+		m, ok := p.ParseBytes(line)
+		if !ok {
+			continue
+		}
 
 		result := make([]interface{}, 0, columns)
-		for _, dot := range pattern.Dots {
+		for _, dot := range p.Dots {
 			if !dot.Valid() {
 				continue
 			}

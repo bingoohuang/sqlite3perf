@@ -26,6 +26,12 @@ github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+Ce
 github.com/bgentry/speakeasy v0.1.0/go.mod h1:+zsyZBPWlz7T6j88CTgSN5bM796AkVf0kBD4zp0CCIs=
 github.com/bingoohuang/gg v0.0.0-20210601154318-ff90b4f03d23 h1:eB0HtkQB9FhtT7dg8slj6WQ3w+Z/nAj9/IRp6UJ1H/M=
 github.com/bingoohuang/gg v0.0.0-20210601154318-ff90b4f03d23/go.mod h1:kKNUAtRrABOvh5ztjh9Q5qtJBkx0sxwCHBQDBgWPhbw=
+github.com/bingoohuang/gg v0.0.0-20210602015545-4aee06216baa h1:cFcGC7ZezWaprv/gF6pwRzGt0wPmFOt+YfM0G2JBlIo=
+github.com/bingoohuang/gg v0.0.0-20210602015545-4aee06216baa/go.mod h1:kKNUAtRrABOvh5ztjh9Q5qtJBkx0sxwCHBQDBgWPhbw=
+github.com/bingoohuang/gg v0.0.0-20210602021219-e8ccbdabf777 h1:NNxUsnv0BqDdnnQQWdYCZRQ2kMYrzXJjWY+gRy0c0sQ=
+github.com/bingoohuang/gg v0.0.0-20210602021219-e8ccbdabf777/go.mod h1:kKNUAtRrABOvh5ztjh9Q5qtJBkx0sxwCHBQDBgWPhbw=
+github.com/bingoohuang/gg v0.0.0-20210602021914-6da77e50e96e h1:F1vBz4pGpR5ZUkou1tQHS1W+Wkcn5Ct5OsCIhlAE6gs=
+github.com/bingoohuang/gg v0.0.0-20210602021914-6da77e50e96e/go.mod h1:kKNUAtRrABOvh5ztjh9Q5qtJBkx0sxwCHBQDBgWPhbw=
 github.com/bketelsen/crypt v0.0.3-0.20200106085610-5cbc8cc4026c/go.mod h1:MKsuJmJgSg28kpZDP6UIiPt0e0Oz0kqKNGyRaWEPv84=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=

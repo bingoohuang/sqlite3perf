@@ -1,0 +1,2 @@
+2021/05/29 13:09:46 Replay POST   http://1.2.3.4/solr/zz/update?v=2, cost 1.256731096s , status: 200
+time               ########method#path|path                        #######cost|duration##########status

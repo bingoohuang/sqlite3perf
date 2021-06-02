@@ -79,9 +79,8 @@ func init() {
 	pf := rootCmd.PersistentFlags()
 	pf.StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.sqlite3perf.yaml)")
 	pf.StringVar(&driverName, "driverName", "sqlite3", "driver name(sqlite3/mysql)")
-	pf.StringVar(&table, "table", "bench", "table name(bench/ff)")
-	pf.StringVar(&dbPath, "db",
-		"./sqlite3perf.db?_journal=wal&_sync=0", "path to database")
+	pf.StringVar(&table, "table", "t1", "table name(bench/ff)")
+	pf.StringVar(&dbPath, "db", "./db_"+time.Now().Format(`02_15_04`)+".db?_journal=wal&_sync=0", "path to database")
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")

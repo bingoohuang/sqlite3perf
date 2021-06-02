@@ -16,4 +16,4 @@
 .idea
 .history
 vendor
-/sqlite3perf.db
+*.db
