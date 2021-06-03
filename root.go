@@ -69,21 +69,14 @@ func Execute() {
 	}
 }
 
-// nolint:gochecknoinits,wsl
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-	pf := rootCmd.PersistentFlags()
-	pf.StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.sqlite3perf.yaml)")
-	pf.StringVar(&driverName, "driverName", "sqlite3", "driver name(sqlite3/mysql)")
-	pf.StringVar(&table, "table", "t1", "table name(bench/ff)")
-	pf.StringVar(&dbPath, "db", "./db_"+time.Now().Format(`02_15_04`)+".db?_journal=wal&_sync=0", "path to database")
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	p := rootCmd.PersistentFlags()
+	p.StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.sqlite3perf.yaml)")
+	p.StringVar(&driverName, "driver", "sqlite3", "driver name(sqlite3/mysql)")
+	p.StringVar(&table, "table", "bench", "table name(bench/ff)")
+	p.StringVar(&dbPath, "db", "./db_"+time.Now().Format(`02_15_04`)+".db?_journal=wal&_sync=0", "path to database")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -136,24 +129,10 @@ var tables = map[string]Table{
 		DropSQL: `DROP TABLE IF EXISTS ff`,
 		CreateSQL: `CREATE TABLE ff (
 		  id bigint(20) NOT NULL AUTO_INCREMENT,
-		  f01 varchar(255),
-		  f02 varchar(255),
-		  f03 varchar(255),
-		  f04 varchar(255),
-		  f05 varchar(255),
-		  f06 varchar(255),
-		  f07 varchar(255),
-		  f08 varchar(255),
-		  f09 varchar(255),
-		  f10 varchar(255),
-		  f11 varchar(255),
-		  f12 varchar(255),
-		  f13 varchar(255),
-		  f14 varchar(255),
-		  f15 varchar(255),
-		  f16 varchar(255),
-		  f17 varchar(255),
-		  f18 varchar(255),
+		  f01 varchar(255), f02 varchar(255), f03 varchar(255), f04 varchar(255), f05 varchar(255),
+		  f06 varchar(255), f07 varchar(255), f08 varchar(255), f09 varchar(255), f10 varchar(255),
+		  f11 varchar(255), f12 varchar(255), f13 varchar(255), f14 varchar(255), f15 varchar(255),
+		  f16 varchar(255), f17 varchar(255), f18 varchar(255),
 		  created datetime NOT NULL COMMENT '创建时间',
 		  updated datetime NOT NULL COMMENT '更新时间',
 		  PRIMARY KEY (id)
@@ -161,13 +140,10 @@ var tables = map[string]Table{
 		InsertFieldsNum: 20,
 		Generator: func(i int) []interface{} {
 			vars := make([]interface{}, 20)
-
 			for i := 0; i < 18; i++ {
 				vars[i] = randstr.GetString(int(fastrand.Uint32n(250) + 5))
 			}
-
 			vars[18], vars[19] = time.Now(), time.Now()
-
 			return vars
 		},
 		CreateInsertSQL: func(batchSize int) string {

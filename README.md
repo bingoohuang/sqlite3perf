@@ -5,6 +5,15 @@
 
 This repo is originally from [sqlite3perf](https://github.com/mwmahlberg/sqlite3perf) to test sqlite3 performance using [go-sqlite3](https://github.com/mattn/go-sqlite3)
 
+## Parse log files to sqlite table for convenience of analysis
+
+```sh
+$ sqlite3perf logline --file=testdata/test1.log -p testdata/pattern1.txt
+2021/06/03 09:40:06 Parse records by config &{File:testdata/test1.log PatternFile:testdata/pattern1.txt QuoteReplace:" LineStart:2021/05/29 13:09:46}
+2021/06/03 09:40:06 Opening database
+2021/06/03 09:40:06 Rows 15 generated, cost 952.698µs
+```
+
 ## Inserts performance among different batch size (prepared mode)
 
 batchSize | cost of 10000 rows inserts | records/s

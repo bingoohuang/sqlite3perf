@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bingoohuang/gg/pkg/logline"
+	"github.com/bingoohuang/gg/pkg/ss"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"io"
@@ -78,26 +79,9 @@ func (g *ParseCmd) run(cmd *cobra.Command, args []string) {
 		log.Fatalf("failed to parse logline pattern: %v", err)
 	}
 
-	createTable := `create table ` + table + `(`
-	insertTable := `insert into ` + table + `(`
-	columns := 0
-	for _, dot := range p.Dots {
-		if !dot.Valid() {
-			continue
-		}
-		if dot.Type == logline.Digits {
-			createTable += dot.Name + ` INTEGER,`
-		} else if dot.Type == logline.Float {
-			createTable += dot.Name + ` REAL,`
-		} else {
-			createTable += dot.Name + ` TEXT,`
-		}
-		insertTable += dot.Name + `,`
-		columns++
-	}
-	createTable = createTable[:len(createTable)-1] + `)`
-	insertTable = insertTable[:len(insertTable)-1] + `) values (` + strings.Repeat(`,?`, columns)[1:] + `)`
+	createTable, insertTable, columns := g.createSqls(p)
 	if _, err := db.Exec(createTable); err != nil {
+		// maybe already created, just print error and continue.
 		log.Printf("create table %s: %s", createTable, err)
 	}
 
@@ -117,7 +101,6 @@ func (g *ParseCmd) run(cmd *cobra.Command, args []string) {
 	totalRows, rows := 0, 0
 
 	start := time.Now()
-
 	ctx := cmd.Context()
 	for scanner.Scan() && ctx.Err() == nil {
 		line := bytes.TrimSpace(scanner.Bytes())
@@ -128,11 +111,9 @@ func (g *ParseCmd) run(cmd *cobra.Command, args []string) {
 
 		result := make([]interface{}, 0, columns)
 		for _, dot := range p.Dots {
-			if !dot.Valid() {
-				continue
+			if dot.Valid() {
+				result = append(result, m[dot.Name])
 			}
-
-			result = append(result, m[dot.Name])
 		}
 		if _, err := ps.ExecContext(ctx, result...); err != nil {
 			log.Fatalf("exec error: %v", err)
@@ -140,7 +121,7 @@ func (g *ParseCmd) run(cmd *cobra.Command, args []string) {
 		rows++
 		totalRows++
 		if rows >= 1000 {
-			Printf("Rows %d generated, cost %s", totalRows, time.Since(start))
+			Printing("Rows %d generated, cost %s", totalRows, time.Since(start))
 			rows = 0
 		}
 	}
@@ -149,32 +130,61 @@ func (g *ParseCmd) run(cmd *cobra.Command, args []string) {
 		log.Fatalf("scanner error: %v", err)
 	}
 
-	Printf("Rows %d generated, cost %s", totalRows, time.Since(start))
+	PrintEnd("Rows %d generated, cost %s\n", totalRows, time.Since(start))
+}
+
+func (g *ParseCmd) createSqls(p *logline.Pattern) (createTable, insertTable string, columns int) {
+	createTable = `create table ` + table + `(`
+	insertTable = `insert into ` + table + `(`
+	for _, dot := range p.Dots {
+		if !dot.Valid() {
+			continue
+		}
+		switch dot.Type {
+		case logline.Digits:
+			createTable += dot.Name + ` INTEGER,`
+		case logline.Float:
+			createTable += dot.Name + ` REAL,`
+		default:
+			createTable += dot.Name + ` TEXT,`
+		}
+		insertTable += dot.Name + `,`
+		columns++
+	}
+	createTable = createTable[:len(createTable)-1] + `)`
+	insertTable = insertTable[:len(insertTable)-1] + `) values (` + strings.Repeat(`,?`, columns)[1:] + `)`
+	return createTable, insertTable, columns
 }
 
 func NewScanLines(start string) bufio.SplitFunc {
-	re := ""
-	for _, c := range start {
-		if unicode.IsDigit(c) {
-			re += `\d`
-		} else {
-			re += string(c)
-		}
-	}
-
+	re := convertDigits(start)
 	startPattern := regexp.MustCompile(re)
 	return func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 		return ScanLines(startPattern, data, atEOF)
 	}
 }
 
+func convertDigits(start string) (re string) {
+	for _, c := range start {
+		re += ss.If(unicode.IsDigit(c), `\d`, string(c))
+	}
+	return
+}
+
 var printN int
 
-func Printf(format string, a ...interface{}) {
+func Printing(format string, a ...interface{}) {
 	if printN > 0 {
 		fmt.Print(strings.Repeat("\b", printN))
 	}
 	printN, _ = fmt.Printf(format, a...)
+}
+
+func PrintEnd(format string, a ...interface{}) {
+	if printN > 0 {
+		fmt.Print(strings.Repeat("\b", printN))
+	}
+	log.Printf(format, a...)
 }
 
 func ScanLines(startPattern *regexp.Regexp, data []byte, atEOF bool) (advance int, token []byte, err error) {

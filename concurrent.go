@@ -97,7 +97,7 @@ func (g *ConcurrentCmd) write(ctx context.Context, db *sql.DB, closeCh, quitCh c
 	for goon(ctx, closeCh) {
 		s, sum := h.Gen()
 		wc := atomic.AddInt64(&g.w, 1)
-		// log.Printf("insert ID:%d, rand:%s, hash:%s", id, s, sum)
+		// log.Printing("insert ID:%d, rand:%s, hash:%s", id, s, sum)
 		if _, err := db.ExecContext(ctx, query, wc, s, sum); err != nil {
 			if ctx.Err() != nil {
 				return
