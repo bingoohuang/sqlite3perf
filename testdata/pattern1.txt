@@ -1,2 +1,4 @@
+2021/05/29 12:13:20 Title: ### REQUEST #41955 id:d52a2382c0a6df1c0a98859a,Seq:2816436832,Ack:177767834 192.166.223.28:54570->192.166.7.1:8983 2021-05-29T12:13:20.50242+08:00
+time               #####################reqNo####id                      #####seq       #####ack      #src                 ##dst             #
 2021/05/29 13:09:46 Replay POST   http://1.2.3.4/solr/zz/update?v=2, cost 1.256731096s , status: 200
-time               ########method#path|path                        #######cost|duration##########status
+                   ########method#path|path                        #######cost|duration##########status
