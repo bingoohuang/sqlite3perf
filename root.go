@@ -74,7 +74,7 @@ func init() {
 
 	p := rootCmd.PersistentFlags()
 	p.StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.sqlite3perf.yaml)")
-	p.StringVar(&driverName, "driver", "sqlite3", "driver name(sqlite3/mysql)")
+	p.StringVar(&driverName, "driver", "sqlite3", "driver name, eg. sqlite3/mysql/sqlite(gitlab.com/cznic/sqlite)")
 	p.StringVar(&table, "table", "bench", "table name(bench/ff)")
 	p.StringVar(&dbPath, "db", "./db_"+time.Now().Format(`02_15_04`)+".db?_journal=wal&_sync=0", "path to database")
 }

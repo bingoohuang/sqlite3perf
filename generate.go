@@ -13,6 +13,7 @@ import (
 	_ "github.com/go-sql-driver/mysql" // import mysql driver
 	_ "github.com/mattn/go-sqlite3"    // import sqlite3 driver
 	"github.com/spf13/cobra"
+	_ "modernc.org/sqlite" // import CGo-free port of SQLite/SQLite3.
 )
 
 // GenerateCmd is the struct representing generate sub-command.
