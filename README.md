@@ -568,4 +568,64 @@ $ sqlite3perf --table ff --db "root:root@tcp(127.0.0.1:3306)/card?charset=utf8mb
 2020/10/01 13:30:15 100000/100000 (100.00%) written in 1m9.639436292s, avg: 696.394µs/record, 1435.97 records/s
 ```
 
-[如何快速安全的插入千万条数据？](https://mp.weixin.qq.com/s/qq7MQkyi7TsFIG7jLuYPBw)
+## Resources
+
+### [如何快速安全的插入千万条数据？](https://mp.weixin.qq.com/s/qq7MQkyi7TsFIG7jLuYPBw)
+ 
+### [优化SQLite，让其适用于一般服务或大型服务](https://mp.weixin.qq.com/s/ZweoPdIda7mVi1bDW-90cg)
+
+`PRAGMA journal_mode = WAL;`
+
+WAL日志模式提供预写日志，提供更多并发性，因为读取器不会阻止写入器，写入器也不会阻止读取器，这与读取器阻止写入器的默认模式相反，反之亦然。
+
+`PRAGMA synchronous = NORMAL;`
+
+Synchronous配置为NORMAL时，SQLite 数据库引擎将在最关键的时刻进行同步，但频率低于FULL模式。WAL模式在synchronous=NORMAL时可以避免损坏。 它通过WAL模式提供最佳性能。
+
+`PRAGMA cache_size = 1000000000;`
+
+增加SQLite缓存, 当使用cache_sizepragma命令更改缓存大小时，更改仅在当前会话中持续。 当数据库关闭并重新打开时，缓存大小将恢复为默认值。
+
+`PRAGMA foreign_keys = true;`
+
+默认情况下，由于历史原因，SQLite不强制执行外键，需要手动启用它们。
+
+`PRAGMA busy_timeout = 5000;`
+
+正如之前看到的，设置一个更大的busy_timeout有助于防止SQLITE_BUSY错误。对于面向用户的应用程序（例如API），建议使用5000（5秒）；后端应用程序（例如队列或应用模块间调用的API），可设置为15000（15秒）或更大。
+
+`mydb.db?_txlock=immediate`
+
+默认情况下，SQLite在DEFERRED模式启动事务，它们被视为只读。当发出包含写入/更新/删除语句的查询时，它们会升级为需要动态数据库锁定的写入事务。 问题是，通过在事务启动后升级事务，SQLite将立即返回一个SQLITE_BUSY错误而不是检查busy_timeout设置。如果数据库已被另一个连接锁定。
+
+`1个写连接，多个读连接`
+
+最后，要彻底消除SQLITE_BUSY错误的方法是使用1个写连接进行写入和查询连接并将其保护在互斥锁后面。诀窍是设置2个数据库连接池：一个用于写入的池 `writeDB.SetMaxOpenConns(1)` 1个读取池，其根据CPU数量进行扩展。`readDB.SetMaxOpenConns(max(4, runtime.NumCPU()))`
+
+`使用STRICT表`
+
+默认情况下，SQLite 是“弱类型”，可以将字符串插入到INT字段，这很多时候会造成程序bug 并严重影响性能。 从3.37开始，SQLite支持 STRICT表的模式并将强制强类型化。
+
+```sql
+    CREATE TABLE cc (
+    id BLOB NOT NULL PRIMARY KEY,
+    created_at INTEGER NOT NULL,
+    something INT NOT NULL
+) STRICT;
+```
+
+
+优化配置总结：
+
+```sql
+PRAGMA journal_mode = WAL;
+PRAGMA busy_timeout = 5000;
+PRAGMA synchronous = NORMAL;
+PRAGMA cache_size = 1000000000;
+PRAGMA foreign_keys = true;
+PRAGMA temp_store = memory;
+使用BEGIN IMMEDIATE事务；
+writeDB.SetMaxOpenConns(1)；
+readDB.SetMaxOpenConns(max(4, runtime.NumCPU()))；
+使用STRICT表。
+```
